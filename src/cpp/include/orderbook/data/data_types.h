@@ -350,9 +350,9 @@ class BaseData {
   auto SetCreateTime(const Timestamp ts) -> void { create_tm_ = ts; }
   auto SetLastModifyTime(const Timestamp ts) -> void { last_modify_tm_ = ts; }
 
-  TransactionId transaction_id_{0};
-  Timestamp create_tm_{0};
-  Timestamp last_modify_tm_{0};
+  TransactionId transaction_id_;
+  Timestamp create_tm_;
+  Timestamp last_modify_tm_;
 
   RoutingId routing_id_;
   Side side_;
