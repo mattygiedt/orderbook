@@ -1,0 +1,167 @@
+namespace orderbook.serialize;
+
+enum SideCode : uint8 {
+    Unknown = 0,
+    Buy = 1,
+    Sell = 2,
+    SellShort = 3,
+    BuyCover = 4
+}
+
+enum OrderStatusCode : uint8 {
+    Unknown = 0,
+    PendingNew = 1,
+    PendingModify = 2,
+    PendingCancel = 3,
+    Rejected = 4,
+    New = 5,
+    PartiallyFilled = 6,
+    Filled = 7,
+    Cancelled = 8,
+    Completed = 9,
+    CancelRejected = 10
+}
+
+enum TimeInForceCode : uint8 {
+    Unknown = 0,
+    Day = 1,
+    Gtc = 2,
+    Ioc = 3,
+    Fok = 4
+}
+
+enum OrderTypeCode : uint8 {
+    Unknown = 0,
+    Market = 1,
+    Limit = 2,
+    Stop = 3,
+    StopLimit = 4
+}
+
+enum ExecutionTypeCode : uint8 {
+    Unknown = 0,
+    New = 1,
+    Canceled = 2,
+    Modified = 3
+}
+
+enum InstrumentTypeCode : uint8 {
+  Unknown = 0,
+  Equity = 1,
+  Future = 2,
+  Call = 3,
+  Put = 4
+}
+
+enum CxlRejResponseToCode : uint8 {
+    Unknown = 0,
+    OrderCancelRequest = 1,
+    OrderCancelReplaceRequest = 2
+}
+
+enum EventTypeCode : uint8 {
+    Unknown = 0,
+    OrderPendingNew = 1,
+    OrderPendingModify = 2,
+    OrderPendingCancel = 3,
+    OrderRejected = 4,
+    OrderNew = 5,
+    OrderPartiallyFilled = 6,
+    OrderFilled = 7,
+    OrderCancelled = 8,
+    OrderCompleted = 9,
+    OrderCancelRejected = 10
+}
+
+table Header {
+    ts_nanos:uint64;
+    seq_no:uint32;
+    event_type:EventTypeCode;
+}
+
+table NewOrderSingle {
+    side:SideCode;
+    order_status:OrderStatusCode;
+    time_in_force:TimeInForceCode;
+    order_type:OrderTypeCode;
+    order_price:int64;
+    order_quantity:int32;
+    account_id:uint32;
+    session_id:uint32;
+    instrument_id:uint64;
+    client_order_id:string;
+}
+
+table ExecutionReport {
+    side:SideCode;
+    order_status:OrderStatusCode;
+    time_in_force:TimeInForceCode;
+    order_type:OrderTypeCode;
+    execution_type:ExecutionTypeCode;
+    last_price:int64;
+    last_quantity:int32;
+    order_price:int64;
+    order_quantity:int32;
+    leaves_quantity:int32;
+    executed_value:int64;
+    execution_id:uint64;
+    account_id:uint32;
+    order_id:uint32;
+    quote_id:uint32;
+    session_id:uint32;
+    instrument_id:uint64;
+    client_order_id:string;
+    orig_client_order_id:string;
+}
+
+table OrderCancelRequest {
+    side:SideCode;
+    order_quantity:int32;
+    order_id:uint32;
+    session_id:uint32;
+    instrument_id:uint64;
+    client_order_id:string;
+    orig_client_order_id:string;
+}
+
+table OrderCancelReplaceRequest {
+    side:SideCode;
+    order_type:OrderTypeCode;
+    order_price:int64;
+    order_quantity:int32;
+    order_id:uint32;
+    session_id:uint32;
+    instrument_id:uint64;
+    client_order_id:string;
+    orig_client_order_id:string;
+}
+
+
+table OrderCancelReject {
+    order_id:uint32;
+    order_status:OrderStatusCode;
+    cxl_rej_response_to:CxlRejResponseToCode;
+    session_id:uint32;
+    client_order_id:string;
+    orig_client_order_id:string;
+}
+
+union Body {
+    NewOrderSingle,
+    ExecutionReport,
+    OrderCancelRequest,
+    OrderCancelReplaceRequest,
+    OrderCancelReject
+}
+
+table Message {
+    header:Header;
+    body:Body;
+}
+
+table MultiMessage {
+    header:Header;
+    messages:[Message];
+}
+
+root_type Message;
