@@ -15,20 +15,6 @@
 
 namespace orderbook::data {
 struct ExecutionReport : BaseData {
-  // template <typename Order>
-  // ExecutionReport(const TransactionId& tx_id, const Order& order,
-  //                const OrderStatus& order_status, const ExecutionId& exec_id)
-  //    : BaseData(tx_id, order.GetRoutingId(), order.GetSide(), order_status,
-  //               order.GetTimeInForce(), order.GetOrderType(),
-  //               ExecutionType::kNew, order.GetInstrumentType(),
-  //               order.GetLastPrice(), order.GetOrderPrice(),
-  //               order.GetLastQuantity(), order.GetOrderQuantity(),
-  //               order.GetLeavesQuantity(), order.GetExecutedQuantity(),
-  //               order.GetExecutedValue(), exec_id, order.GetAccountId(),
-  //               order.GetOrderId(), order.GetQuoteId(), order.GetSessionId(),
-  //               order.GetInstrumentId(), order.GetClientOrderId(),
-  //               order.GetOrigClientOrderId()) {}
-
   template <typename Order>
   ExecutionReport(const TransactionId& tx_id, const ExecutionId& exec_id,
                   const Order& order)

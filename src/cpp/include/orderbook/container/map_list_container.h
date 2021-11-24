@@ -41,7 +41,7 @@ class MapListContainer {
   }
 
   /**
-   * Remove the order from the container. There are three steps to this process:
+   * Remove the order from the container.
    *
    * Returns std::pair[true, resting_order] if the order was found and erased,
    * std::pair[false, invalid_order] if not found.
