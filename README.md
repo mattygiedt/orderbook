@@ -1,7 +1,7 @@
 # orderbook
-Call me Ishmael... Every software developer as that special problem domain that they keep getting drawn back to and cannot let go. Mine, sadly, unfortunately, is thinking about, building, and working around limit order books. The technology in play at the massive exchanges like the CME Globex or any spread order book is simply mind-boggling. It simply _has_ to work, with complete redundancy, zero downtime over the span of trading hours, and with deterministic execution.
+Call me Ishmael... Every software developer has that special problem domain that they keep getting drawn back to and cannot let go. Mine, sadly, (unfortunately?), is thinking about, building, and working around limit order books. The complex technology in play at the massive exchanges like the CME Globex, or even any full-scale limit order book that supports spread orders is mind-boggling. It simply _has_ to work, with complete redundancy, zero downtime and with deterministic execution.
 
-**Do Not Use This Code In Production**
+**Please Do Not Use This Code In Production**
 
 This project is meant to be educational. It employs the tinyest of testing, which validates simple limit order book semantics, and assumes best behavior of our market participants.
 
@@ -12,7 +12,7 @@ Project uses VSCode `.devcontainer` support -- look in the directory for a sampl
 ```
 git clone git@github.com:mattygiedt/orderbook.git
 cd orderbook
-code . <open inside dev container>
+code . <open project inside dev container>
 mkdir build
 cd build
 cmake ..
