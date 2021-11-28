@@ -13,7 +13,7 @@ namespace orderbook::book {
 using namespace orderbook::data;
 
 template <typename BidContainerType, typename AskContainerType,
-          typename OrderType, typename EventDispatcher>
+          typename OrderType, typename PoolType, typename EventDispatcher>
 class LimitOrderBook {
  private:
   using Order = OrderType;
@@ -24,7 +24,8 @@ class LimitOrderBook {
       : dispatcher_(std::move(dispatcher)), data_{EmptyType()} {}
 
   auto Add(const NewOrderSingle& new_order_single) -> void {
-    Order order;
+    Order& order = *PoolType::Instance().Take();
+
     order.SetOrderId(++order_id_)
         .SetRoutingId(new_order_single.GetRoutingId())
         .SetSessionId(new_order_single.GetSessionId())

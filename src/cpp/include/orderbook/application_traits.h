@@ -15,6 +15,7 @@
 #include "orderbook/container/map_list_container.h"
 #include "orderbook/data/event_types.h"
 #include "orderbook/data/limit_order.h"
+#include "orderbook/data/object_pool.h"
 #include "orderbook/serialize/orderbook_generated.h"
 #include "orderbook/util/socket_providers.h"
 #include "orderbook/util/time_util.h"
@@ -33,15 +34,19 @@ struct ContainerTraits {
 };
 
 template <typename BidContainerType, typename AskContainerType,
-          typename OrderType, typename EventDispatcher>
+          typename OrderType, typename PoolType, typename EventDispatcher>
 struct BookTraits {
   using OrderBook =
       orderbook::book::LimitOrderBook<BidContainerType, AskContainerType,
-                                      OrderType, EventDispatcher>;
+                                      OrderType, PoolType, EventDispatcher>;
 };
 
 struct MapListOrderBookTraits {
-  using OrderType = orderbook::data::LimitOrder;
+  static constexpr std::size_t kPoolSize = 1024 * 16;
+  using OrderType = orderbook::data::PooledLimitOrder<kPoolSize>;
+  using PoolType =
+      orderbook::data::ObjectPool<OrderType, OrderType::GetPoolSize()>;
+  using OrderPtr = boost::intrusive_ptr<OrderType>;
   using EventType = orderbook::data::EventType;
   using EventData = orderbook::data::EventData;
   using EventCallback = orderbook::data::EventCallback;
@@ -50,7 +55,7 @@ struct MapListOrderBookTraits {
   using BidContainerType = ContainerTraits<OrderType>::MapListBidContainer;
   using AskContainerType = ContainerTraits<OrderType>::MapListAskContainer;
   using BookType = BookTraits<BidContainerType, AskContainerType, OrderType,
-                              EventDispatcher>::OrderBook;
+                              PoolType, EventDispatcher>::OrderBook;
 };
 
 }  // namespace orderbook
