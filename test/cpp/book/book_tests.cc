@@ -3,8 +3,12 @@
 
 using namespace orderbook::data;
 
+// clang-format off
 template <typename Traits>
-class OrderBookFixture : public ::testing::Test {
+
+  requires( orderbook::book::BookConcept<typename Traits::BookType> )
+
+class OrderBookFixture : public ::testing::Test {  // clang-format on
  private:
   using Order = typename Traits::OrderType;
   using OrderBook = typename Traits::BookType;
@@ -33,23 +37,20 @@ class OrderBookFixture : public ::testing::Test {
     return str_view;
   }
 
-  static auto SetOrder(NewOrderSingle& order, ClientOrderId client_order_id,
-                       Price price, Quantity quantity,
-                       Quantity executed_quantity, Side side) -> void {
-    order.SetClientOrderId(client_order_id)
-        .SetOrderPrice(price)
-        .SetOrderQuantity(quantity)
-        .SetLeavesQuantity(quantity)
-        .SetExecutedQuantity(executed_quantity)
-        .SetSide(side);
-  }
-
-  static auto MakeOrder(Price price, Quantity quantity, Side side)
-      -> NewOrderSingle {
-    NewOrderSingle order;
-    SetOrder(order, RandomStringView(kClientOrderIdSize), price, quantity, 0,
-             side);
-    return order;
+  static auto MakeNewOrderSingle(const Price& price, const Quantity& quantity,
+                                 const Side& side) -> NewOrderSingle {
+    NewOrderSingle nos;
+    nos.SetRoutingId(0);
+    nos.SetSessionId(0);
+    nos.SetAccountId(0);
+    nos.SetInstrumentId(1);
+    nos.SetClientOrderId(RandomStringView(kClientOrderIdSize));
+    nos.SetOrderType(OrderTypeCode::kLimit);
+    nos.SetTimeInForce(TimeInForceCode::kDay);
+    nos.SetOrderPrice(price);
+    nos.SetOrderQuantity(quantity);
+    nos.SetSide(side);
+    return nos;
   }
 
   static auto MakeCancel(const NewOrderSingle& order, const OrderId id)
@@ -83,11 +84,13 @@ class OrderBookFixture : public ::testing::Test {
         EventType::kOrderRejected,
         [&](const EventData& /*unused*/) { ++reject_happened; });
 
-    const auto& buy_order = MakeOrder(21, 10, SideCode::kBuy);  // NOLINT
+    const auto& buy_order =
+        MakeNewOrderSingle(21, 10, SideCode::kBuy);  // NOLINT
     book.Add(buy_order);
     book.Add(buy_order);
 
-    const auto& sell_order = MakeOrder(22, 10, SideCode::kSell);  // NOLINT
+    const auto& sell_order =
+        MakeNewOrderSingle(22, 10, SideCode::kSell);  // NOLINT
     book.Add(sell_order);
     book.Add(sell_order);
 
@@ -134,10 +137,12 @@ class OrderBookFixture : public ::testing::Test {
           ASSERT_TRUE(exec.GetOrderStatus() == OrderStatus::kFilled);
         });
 
-    const auto& buy_order = MakeOrder(21, 10, SideCode::kBuy);  // NOLINT
+    const auto& buy_order =
+        MakeNewOrderSingle(21, 10, SideCode::kBuy);  // NOLINT
     book.Add(buy_order);
 
-    const auto& sell_order = MakeOrder(21, 10, SideCode::kSell);  // NOLINT
+    const auto& sell_order =
+        MakeNewOrderSingle(21, 10, SideCode::kSell);  // NOLINT
     book.Add(sell_order);
 
     ASSERT_TRUE(book.Empty());
@@ -184,10 +189,12 @@ class OrderBookFixture : public ::testing::Test {
         EventType::kOrderFilled,
         [&](const EventData& /*unused*/) { ++filled_exec_happened; });
 
-    const auto& buy_order = MakeOrder(21, 10, SideCode::kBuy);  // NOLINT
+    const auto& buy_order =
+        MakeNewOrderSingle(21, 10, SideCode::kBuy);  // NOLINT
     book.Add(buy_order);
 
-    const auto& sell_order = MakeOrder(21, 5, SideCode::kSell);  // NOLINT
+    const auto& sell_order =
+        MakeNewOrderSingle(21, 5, SideCode::kSell);  // NOLINT
     book.Add(sell_order);
     book.Add(sell_order);
 
@@ -206,6 +213,19 @@ class OrderBookFixture : public ::testing::Test {
     std::size_t cancel_happened{0};
     std::size_t cancel_reject_happened{0};
 
+    OrderId buy_order_id{0};
+    OrderId sell_order_id{0};
+
+    dispatcher->appendListener(EventType::kOrderNew,
+                               [&](const EventData& data) {
+                                 auto& exec = std::get<ExecutionReport>(data);
+                                 if (exec.GetSide() == SideCode::kBuy) {
+                                   buy_order_id = exec.GetOrderId();
+                                 } else {
+                                   sell_order_id = exec.GetOrderId();
+                                 }
+                               });
+
     dispatcher->appendListener(
         EventType::kOrderCancelled,
         [&](const EventData& /*unused*/) { ++cancel_happened; });
@@ -214,16 +234,23 @@ class OrderBookFixture : public ::testing::Test {
         EventType::kOrderCancelRejected,
         [&](const EventData& /*unused*/) { ++cancel_reject_happened; });
 
-    const auto& buy_order = MakeOrder(21, 10, SideCode::kBuy);  // NOLINT
+    const auto& buy_order =
+        MakeNewOrderSingle(21, 10, SideCode::kBuy);  // NOLINT
     book.Add(buy_order);
+    ASSERT_FALSE(book.Empty());
+    ASSERT_FALSE(buy_order_id == 0);
 
-    const auto& sell_order = MakeOrder(33, 5, SideCode::kSell);  // NOLINT
+    const auto& sell_order =
+        MakeNewOrderSingle(33, 5, SideCode::kSell);  // NOLINT
     book.Add(sell_order);
+    ASSERT_FALSE(sell_order_id == 0);
 
-    const auto& cancel_buy_order = MakeCancel(buy_order, 1);  // NOLINT
+    const auto& cancel_buy_order =
+        MakeCancel(buy_order, buy_order_id);  // NOLINT
     book.Cancel(cancel_buy_order);
 
-    const auto& cancel_sell_order = MakeCancel(sell_order, 2);  // NOLINT
+    const auto& cancel_sell_order =
+        MakeCancel(sell_order, sell_order_id);  // NOLINT
     book.Cancel(cancel_sell_order);
 
     ASSERT_TRUE(book.Empty());
@@ -239,10 +266,13 @@ using MapListOrderBookFixture =
     OrderBookFixture<orderbook::MapListOrderBookTraits>;
 
 TEST_F(MapListOrderBookFixture, add_test) { AddTest(); }  // NOLINT
-TEST_F(MapListOrderBookFixture, simple_execute_test) {    // NOLINT
+
+TEST_F(MapListOrderBookFixture, simple_execute_test) {  // NOLINT
   SimpleExecuteTest();
 }
+
 TEST_F(MapListOrderBookFixture, partial_execute_test) {  // NOLINT
   PartialExecuteTest();
 }
+
 TEST_F(MapListOrderBookFixture, cancel_test) { CancelTest(); }  // NOLINT

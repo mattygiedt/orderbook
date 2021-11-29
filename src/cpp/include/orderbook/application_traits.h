@@ -46,7 +46,6 @@ struct MapListOrderBookTraits {
   using OrderType = orderbook::data::IntrusiveLimitOrder<kPoolSize>;
   using PoolType =
       orderbook::data::IntrusivePool<OrderType, OrderType::GetPoolSize()>;
-  using OrderPtr = boost::intrusive_ptr<OrderType>;
   using EventType = orderbook::data::EventType;
   using EventData = orderbook::data::EventData;
   using EventCallback = orderbook::data::EventCallback;
