@@ -51,87 +51,56 @@ class OrderBook {  // clang-format on
         EventType::kOrderPendingNew, [&](const EventData& data) {
           spdlog::info("EventType::kOrderPendingNew");
 
-          const auto& exec = std::get<ExecutionReport>(data);
-
-          SerializeExecutionReport(builder_, EventType::kOrderPendingNew, exec);
-
-          socket_.SendFlatBuffer(builder_.GetBufferPointer(),
-                                 builder_.GetSize(), exec.GetRoutingId());
+          HandleExecutionReport(std::get<ExecutionReport>(data),
+                                EventType::kOrderPendingNew);
         });
 
     dispatcher_->appendListener(
         EventType::kOrderNew, [&](const EventData& data) {
           spdlog::info("EventType::kOrderNew");
 
-          const auto& exec = std::get<ExecutionReport>(data);
-
-          SerializeExecutionReport(builder_, EventType::kOrderNew, exec);
-
-          socket_.SendFlatBuffer(builder_.GetBufferPointer(),
-                                 builder_.GetSize(), exec.GetRoutingId());
+          HandleExecutionReport(std::get<ExecutionReport>(data),
+                                EventType::kOrderNew);
         });
 
     dispatcher_->appendListener(
         EventType::kOrderPartiallyFilled, [&](const EventData& data) {
           spdlog::info("EventType::kOrderPartiallyFilled");
 
-          const auto& exec = std::get<ExecutionReport>(data);
-
-          SerializeExecutionReport(builder_, EventType::kOrderPartiallyFilled,
-                                   exec);
-
-          socket_.SendFlatBuffer(builder_.GetBufferPointer(),
-                                 builder_.GetSize(), exec.GetRoutingId());
+          HandleExecutionReport(std::get<ExecutionReport>(data),
+                                EventType::kOrderPartiallyFilled);
         });
 
     dispatcher_->appendListener(
         EventType::kOrderFilled, [&](const EventData& data) {
           spdlog::info("EventType::kOrderFilled");
 
-          const auto& exec = std::get<ExecutionReport>(data);
-
-          SerializeExecutionReport(builder_, EventType::kOrderFilled, exec);
-
-          socket_.SendFlatBuffer(builder_.GetBufferPointer(),
-                                 builder_.GetSize(), exec.GetRoutingId());
+          HandleExecutionReport(std::get<ExecutionReport>(data),
+                                EventType::kOrderFilled);
         });
 
     dispatcher_->appendListener(
         EventType::kOrderCancelled, [&](const EventData& data) {
           spdlog::info("EventType::kOrderCancelled");
 
-          const auto& exec = std::get<ExecutionReport>(data);
-
-          SerializeExecutionReport(builder_, EventType::kOrderCancelled, exec);
-
-          socket_.SendFlatBuffer(builder_.GetBufferPointer(),
-                                 builder_.GetSize(), exec.GetRoutingId());
+          HandleExecutionReport(std::get<ExecutionReport>(data),
+                                EventType::kOrderCancelled);
         });
 
     dispatcher_->appendListener(
         EventType::kOrderRejected, [&](const EventData& data) {
           spdlog::info("EventType::kOrderRejected");
 
-          const auto& exec = std::get<ExecutionReport>(data);
-
-          SerializeExecutionReport(builder_, EventType::kOrderRejected, exec);
-
-          socket_.SendFlatBuffer(builder_.GetBufferPointer(),
-                                 builder_.GetSize(), exec.GetRoutingId());
+          HandleExecutionReport(std::get<ExecutionReport>(data),
+                                EventType::kOrderRejected);
         });
 
     dispatcher_->appendListener(
         EventType::kOrderCancelRejected, [&](const EventData& data) {
           spdlog::info("EventType::kOrderCancelRejected");
 
-          const auto& ord_cxl_rej = std::get<OrderCancelReject>(data);
-
-          SerializeOrderCancelReject(builder_, EventType::kOrderCancelRejected,
-                                     ord_cxl_rej);
-
-          socket_.SendFlatBuffer(builder_.GetBufferPointer(),
-                                 builder_.GetSize(),
-                                 ord_cxl_rej.GetRoutingId());
+          HandleOrderCancelReject(std::get<OrderCancelReject>(data),
+                                  EventType::kOrderCancelRejected);
         });
   }
 
@@ -206,6 +175,22 @@ class OrderBook {  // clang-format on
                                    GetSerializedEventType(event_type)),
                       Body::OrderCancelReject,
                       order_cancel_reject.SerializeTo(builder).Union()));
+  }
+
+  auto HandleExecutionReport(const ExecutionReport& execution_report,
+                             const EventType& event_type) -> void {
+    SerializeExecutionReport(builder_, event_type, execution_report);
+
+    socket_.SendFlatBuffer(builder_.GetBufferPointer(), builder_.GetSize(),
+                           execution_report.GetRoutingId());
+  }
+
+  auto HandleOrderCancelReject(const OrderCancelReject& order_cancel_reject,
+                               const EventType& event_type) -> void {
+    SerializeOrderCancelReject(builder_, event_type, order_cancel_reject);
+
+    socket_.SendFlatBuffer(builder_.GetBufferPointer(), builder_.GetSize(),
+                           order_cancel_reject.GetRoutingId());
   }
 
   EventDispatcherPtr dispatcher_;
