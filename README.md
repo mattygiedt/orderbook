@@ -40,7 +40,7 @@ That's basically what you'll find here, written in my best attempt at modern C++
 ### TODO
 * `NewOrderSingle` message validation
 * `OrderCancelRequest` message validation
-* Wrap `intrusive_ptr` around `LimitOrder` and allocate from an object_pool
+* ~~Wrap `intrusive_ptr` around `LimitOrder` and allocate from an object_pool~~
 * Support `OrderCancelReplaceRequest` workflow
 * Support cancel-on-disconnect
 * Performance benchmarking
