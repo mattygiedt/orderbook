@@ -33,8 +33,8 @@ class MapListContainer {
 
     if (!order_map_.contains(order_id)) {
       auto& list = price_level_map_[order->GetOrderPrice()];
-      auto iter = list.insert(list.end(), std::move(order));
-      order_map_.emplace(order_id, iter);
+      auto&& iter = list.insert(list.end(), std::move(order));
+      order_map_.emplace(order_id, std::forward<Iterator>(iter));
       ++size_;
       return true;
     }
