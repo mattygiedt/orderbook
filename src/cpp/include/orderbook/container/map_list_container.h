@@ -54,7 +54,7 @@ class MapListContainer {
     auto order_map_iter = order_map_.find(cancel_request.GetOrderId());
     if (order_map_iter != order_map_.end()) {
       auto& list = price_level_map_[cancel_request.GetOrderPrice()];
-      Iterator iter = order_map_iter->second;
+      auto& iter = order_map_iter->second;
       // TODO: validate the order the iterator is pointing to has the same
       // attributes as the cance_request message
       list.erase(iter);
