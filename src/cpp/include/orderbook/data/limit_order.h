@@ -1,5 +1,6 @@
 #pragma once
 
+#include "boost/intrusive/list.hpp"
 #include "boost/intrusive_ptr.hpp"
 #include "orderbook/data/data_types.h"
 #include "orderbook/data/object_pool.h"
@@ -25,7 +26,8 @@ class LimitOrder : public BaseData {
 };
 
 template <std::size_t PoolSize = 2048>
-class PooledLimitOrder : public LimitOrder {
+class PooledLimitOrder : public LimitOrder,
+                         public boost::intrusive::list_base_hook<> {
  private:
  public:
   static constexpr std::size_t GetPoolSize() { return PoolSize; }
@@ -35,6 +37,11 @@ class PooledLimitOrder : public LimitOrder {
   auto AddRef() -> void { ++ref_count_; }
   auto DelRef() -> std::size_t { return --ref_count_; }
   auto GetRef() const -> std::size_t { return ref_count_; }
+  auto Release() -> void {
+    using Object = PooledLimitOrder<PoolSize>;
+    using ObjectPool = orderbook::data::ObjectPool<Object, PoolSize>;
+    ObjectPool::Instance().Offer(this);
+  }
 
  private:
   std::size_t ref_count_;

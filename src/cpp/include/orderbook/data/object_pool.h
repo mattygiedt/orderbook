@@ -16,6 +16,7 @@ concept PoolableConcept = requires(PooledT t) {
   t.AddRef();
   t.DelRef();
   t.GetRef();
+  t.Release();
 };
 
 
@@ -128,8 +129,7 @@ void intrusive_ptr_release(T* p) {
   if (p->DelRef() == 0) {
     // Remember: ref_count_ is initialized to 1 in our data objects
     p->AddRef();
-    using ObjectPool = orderbook::data::ObjectPool<T, T::GetPoolSize()>;
-    ObjectPool::Instance().Offer(p);
+    p->Release();
   }
 }
 
