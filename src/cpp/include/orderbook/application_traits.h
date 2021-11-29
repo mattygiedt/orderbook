@@ -43,9 +43,9 @@ struct BookTraits {
 
 struct MapListOrderBookTraits {
   static constexpr std::size_t kPoolSize = 1024 * 16;
-  using OrderType = orderbook::data::PooledLimitOrder<kPoolSize>;
+  using OrderType = orderbook::data::IntrusiveLimitOrder<kPoolSize>;
   using PoolType =
-      orderbook::data::ObjectPool<OrderType, OrderType::GetPoolSize()>;
+      orderbook::data::IntrusivePool<OrderType, OrderType::GetPoolSize()>;
   using OrderPtr = boost::intrusive_ptr<OrderType>;
   using EventType = orderbook::data::EventType;
   using EventData = orderbook::data::EventData;

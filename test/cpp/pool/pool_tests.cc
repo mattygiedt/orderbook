@@ -13,12 +13,12 @@ struct Foo {
 class PoolFixture : public ::testing::Test {
  private:
  public:
-  static auto IntrusivePtrTest() -> void {
+  static auto IntrusiveTest() -> void {
     constexpr std::size_t kPoolSize = 4;
-    using LimitOrderType = orderbook::data::PooledLimitOrder<kPoolSize>;
+    using LimitOrderType = orderbook::data::IntrusiveLimitOrder<kPoolSize>;
     using LimitOrderPtr = boost::intrusive_ptr<LimitOrderType>;
-    using Pool = orderbook::data::ObjectPool<LimitOrderType,
-                                             LimitOrderType::GetPoolSize()>;
+    using Pool = orderbook::data::IntrusivePool<LimitOrderType,
+                                                LimitOrderType::GetPoolSize()>;
     using List = std::list<LimitOrderPtr>;
 
     Pool& pool = Pool::Instance();
@@ -40,9 +40,10 @@ class PoolFixture : public ::testing::Test {
 
   static auto IntrusiveListTest() -> void {
     constexpr std::size_t kPoolSize = 4;
-    using LimitOrderType = orderbook::data::PooledLimitOrder<kPoolSize>;
-    using Pool = orderbook::data::ObjectPool<LimitOrderType,
-                                             LimitOrderType::GetPoolSize()>;
+    using LimitOrderType = orderbook::data::IntrusiveListLimitOrder<kPoolSize>;
+    using Pool =
+        orderbook::data::IntrusiveListPool<LimitOrderType,
+                                           LimitOrderType::GetPoolSize()>;
     using List = boost::intrusive::list<LimitOrderType>;
 
     Pool& pool = Pool::Instance();
@@ -51,7 +52,7 @@ class PoolFixture : public ::testing::Test {
 
     List list;
 
-    auto& order = *pool.Take();
+    auto& order = pool.Take();
     auto iter = list.insert(list.end(), order);
 
     ASSERT_TRUE(pool.Available() == (pool.Capacity() - 1));
@@ -64,7 +65,7 @@ class PoolFixture : public ::testing::Test {
     ASSERT_TRUE(pool.Capacity() == pool.Available());
   }
 
-  static auto FooTest() -> void {
+  static auto PointerTest() -> void {
     constexpr std::size_t kPoolSize = 4;
     std::array<Foo*, kPoolSize> buf;
 
@@ -87,8 +88,28 @@ class PoolFixture : public ::testing::Test {
     ASSERT_TRUE(foo_ref.a == buf[0]->a);
     ASSERT_TRUE(foo_ref.Release() == buf[0]);
   }
+
+  static auto ArrayTest() -> void {
+    constexpr std::size_t kPoolSize = 4;
+    std::array<Foo, kPoolSize> buf;
+
+    auto foo = buf[0];
+    auto& foo_ref = buf[0];
+
+    ASSERT_FALSE(&foo == &foo_ref);
+
+    foo.a = 42;  // NOLINT
+
+    ASSERT_TRUE(foo.a == 42);  // NOLINT
+    ASSERT_FALSE(foo.a == foo_ref.a);
+
+    foo_ref.a = 42;  // NOLINT
+    ASSERT_TRUE(&foo_ref == &buf[0]);
+    ASSERT_TRUE(foo_ref.a == buf[0].a);
+  }
 };
 
-TEST_F(PoolFixture, intrusive_ptr_test) { IntrusivePtrTest(); }    // NOLINT
+TEST_F(PoolFixture, intrusive_test) { IntrusiveTest(); }           // NOLINT
 TEST_F(PoolFixture, intrusive_list_test) { IntrusiveListTest(); }  // NOLINT
-TEST_F(PoolFixture, foo_test) { FooTest(); }                       // NOLINT
+TEST_F(PoolFixture, pointer_test) { PointerTest(); }               // NOLINT
+TEST_F(PoolFixture, array_test) { ArrayTest(); }                   // NOLINT
