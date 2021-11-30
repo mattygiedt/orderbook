@@ -92,7 +92,7 @@ class IntrusivePool {  // clang-format on
 
     // Have we reached a new max_depth mark?
     Counter depth = Capacity() - next;
-    if (max_depth_ < depth) {
+    if (max_depth_ < depth && depth % 1024 == 0) {
       max_depth_ = depth;
       spdlog::warn("IntrusivePool {} max_depth: {}", typeid(T).name(),
                    max_depth_);

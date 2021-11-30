@@ -19,7 +19,7 @@ RUN echo "Installing development tools ..."; \
         clang-tidy \
         clang-format;
 
-RUN echo "Installing gtest ..."; \
+RUN echo "Installing google test ..."; \
     set -ex; \
     git clone https://github.com/google/googletest.git; \
     cd googletest; \
@@ -28,6 +28,16 @@ RUN echo "Installing gtest ..."; \
     cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RelWithDebInfo ..; \
     make -j4 install; \
     rm -rf /googletest;
+
+RUN echo "Installing google benchmark ..."; \
+    set -ex; \
+    git clone https://github.com/google/benchmark.git; \
+    cd benchmark; \
+    mkdir build; \
+    cd build; \
+    cmake -G "Unix Makefiles" -DBENCHMARK_ENABLE_GTEST_TESTS=OFF -DCMAKE_BUILD_TYPE=Release ..; \
+    make -j4 install; \
+    rm -rf /benchmark;
 
 RUN echo "Installing boost:1.77 ..."; \
     set -ex; \
