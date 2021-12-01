@@ -49,7 +49,7 @@ class MapListContainer {
    */
   auto Modify(const OrderCancelReplaceRequest& modify_request)
       -> std::pair<bool, OrderPtr> {
-    auto order_map_iter = order_map_.find(modify_request.GetOrderId());
+    const auto& order_map_iter = order_map_.find(modify_request.GetOrderId());
     if (order_map_iter != order_map_.end()) {
       auto& list = price_level_map_[modify_request.GetOrderPrice()];
       auto& iter = order_map_iter->second;
@@ -120,7 +120,7 @@ class MapListContainer {
   template <typename CancelRequest>
   auto Remove(const CancelRequest& cancel_request)
       -> std::pair<bool, OrderPtr> {
-    auto order_map_iter = order_map_.find(cancel_request.GetOrderId());
+    const auto& order_map_iter = order_map_.find(cancel_request.GetOrderId());
     if (order_map_iter != order_map_.end()) {
       auto& list = price_level_map_[cancel_request.GetOrderPrice()];
       auto& iter = order_map_iter->second;
