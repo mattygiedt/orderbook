@@ -63,7 +63,7 @@ if(NOT CLANG_TIDY_EXE)
 else()
     message(STATUS "Linter clang-tidy found: ${CLANG_TIDY_EXE}")
     set(CMAKE_CXX_CLANG_TIDY clang-tidy
-        -header-filter=*.hh -checks=-*,modernize-*,diagnostic-*,analyzer-*,readability-*,performance-*)
+        -header-filter=*.h -checks=-*,modernize-*,diagnostic-*,analyzer-*,readability-*,performance-*)
 endif()
 
 # Subdirectories

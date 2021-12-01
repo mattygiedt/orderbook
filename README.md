@@ -39,21 +39,21 @@ That's basically what you'll find here, written in my best attempt at modern C++
 
 ### Benchmarking
 ```
-root@345a55e505f8:/workspaces/orderbook/build/benchmark/container# ./container_benchmark
-2021-11-30T03:53:11+00:00
-Running ./container_benchmark
+root@345a55e505f8:/workspaces/orderbook/build# ./benchmark/container/container_benchmark
+2021-12-01T03:47:16+00:00
+Running ./benchmark/container/container_benchmark
 Run on (6 X 2999.99 MHz CPU s)
 CPU Caches:
   L1 Data 32 KiB (x6)
   L1 Instruction 32 KiB (x6)
   L2 Unified 256 KiB (x6)
   L3 Unified 9216 KiB (x1)
-Load Average: 0.03, 0.08, 0.10
+Load Average: 0.15, 0.29, 0.32
 ------------------------------------------------------------------------------------------
 Benchmark                                                Time             CPU   Iterations
 ------------------------------------------------------------------------------------------
-BM_AddRemoveIntrusiveOrder<MapListBidContainer>      29043 ns        29042 ns        23445
-BM_AddRemoveIntrusiveOrder<MapListAskContainer>      31242 ns        31242 ns        22304
+BM_AddRemoveIntrusiveOrder<MapListBidContainer>       2721 ns         2721 ns       265402
+BM_AddRemoveIntrusiveOrder<MapListAskContainer>       2745 ns         2745 ns       264218
 ```
 
 ### TODO

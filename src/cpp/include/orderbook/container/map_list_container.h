@@ -20,6 +20,8 @@ class MapListContainer {
   using OrderCancelRequest = orderbook::data::OrderCancelRequest;
   using OrderCancelReplaceRequest = orderbook::data::OrderCancelReplaceRequest;
 
+  inline static std::pair<bool, OrderPtr> kFalsePair = {false, nullptr};
+
  public:
   /**
    * Add the order to the container.
@@ -29,7 +31,6 @@ class MapListContainer {
    */
   auto Add(OrderPtr order) -> bool {
     const auto& order_id = order->GetOrderId();
-
     if (!order_map_.contains(order_id)) {
       auto& list = price_level_map_[order->GetOrderPrice()];
       auto&& iter = list.insert(list.end(), std::move(order));
@@ -67,17 +68,25 @@ class MapListContainer {
             order->GetOrderQuantity() != modify_request.GetOrderQuantity();
 
         if (prc_changed) {
-          // Change in price requires remove + add
-          auto&& remove_pair = Remove(*order);
-          assert(remove_pair.first == true);
+          // Change in price requires remove + update + add
+          if (!Remove(*order).second) {
+            spdlog::error("MapListContainer::Modify cannot remove order_id {}",
+                          modify_request.GetOrderId());
+            return kFalsePair;
+          }
+
           order->SetClientOrderId(modify_request.GetClientOrderId())
               .SetOrigClientOrderId(modify_request.GetOrigClientOrderId())
               .SetOrderQuantity(modify_request.GetOrderQuantity())
               .SetOrderPrice(modify_request.GetOrderPrice())
               .UpdateOrderStatus()
               .Mark();
-          auto add_flag = Add(order);
-          assert(add_flag == true);
+
+          if (!Add(order)) {
+            spdlog::error("MapListContainer::Modify cannot add order_id {}",
+                          modify_request.GetOrderId());
+            return kFalsePair;
+          }
         } else if (qty_changed) {
           assert(prc_changed == false);
           if (order->GetOrderQuantity() > modify_request.GetOrderQuantity()) {
@@ -104,11 +113,11 @@ class MapListContainer {
               .Mark();
         }
 
-        return std::make_pair(true, std::move(order));
+        return {true, std::move(order)};
       }
     }
 
-    return std::make_pair(false, nullptr);
+    return kFalsePair;
   }
 
   /**
@@ -136,10 +145,10 @@ class MapListContainer {
         price_level_map_.erase(cancel_request.GetOrderPrice());
       }
 
-      return std::make_pair(true, order);
+      return {true, order};
     }
 
-    return std::make_pair(false, nullptr);
+    return kFalsePair;
   }
 
   /**

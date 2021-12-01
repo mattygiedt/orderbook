@@ -146,6 +146,8 @@ auto main(int argc, char** argv) -> int {
         .SetOrderQuantity(qty)
         .SetSide(side)
         .SetInstrumentId(1)
+        .SetSessionId(1)
+        .SetAccountId(1)
         .SetClientOrderId(cl_ord_id)
         .SetOrderType(OrderType::kLimit)
         .SetTimeInForce(TimeInForce::kDay)
