@@ -62,11 +62,30 @@ class LimitOrderBook {
   }
 
   /**
-   * For the time being, deny any attempt to modify resting orders.
+   * Attempt to modify a resting order.
    */
-  auto Modify(const OrderCancelReplaceRequest& cancel_replace_request) -> void {
-    CancelRejectOrder(cancel_replace_request,
-                      CxlRejResponseTo::kOrderCancelReplaceRequest);
+  auto Modify(const OrderCancelReplaceRequest& modify_request) -> void {
+    if (modify_request.IsBuyOrder()) {
+      auto&& [modified, modified_order] = bids_.Modify(modify_request);
+
+      if (modified) {
+        DispatchOrderStatus(EventType::kOrderModified, modified_order);
+        Match(SideCode::kBuy);
+      } else {
+        CancelRejectOrder(modify_request,
+                          CxlRejResponseTo::kOrderCancelReplaceRequest);
+      }
+    } else {
+      auto&& [modified, modified_order] = asks_.Modify(modify_request);
+
+      if (modified) {
+        DispatchOrderStatus(EventType::kOrderModified, modified_order);
+        Match(SideCode::kSell);
+      } else {
+        CancelRejectOrder(modify_request,
+                          CxlRejResponseTo::kOrderCancelReplaceRequest);
+      }
+    }
   }
 
   /**
@@ -177,7 +196,8 @@ class LimitOrderBook {
         .SetExecutedQuantity(0)
         .SetLastPrice(0)
         .SetLastQuantity(0)
-        .SetExecutedValue(0);
+        .SetExecutedValue(0)
+        .Mark();
     return ord;
   }
 
@@ -187,7 +207,8 @@ class LimitOrderBook {
         .SetLeavesQuantity(order->GetLeavesQuantity() - qty)
         .SetExecutedValue(order->GetExecutedValue() + (prc * qty))
         .SetLastPrice(prc)
-        .SetLastQuantity(qty);
+        .SetLastQuantity(qty)
+        .Mark();
 
     if (order->GetLeavesQuantity() > 0) {
       order->SetOrderStatus(OrderStatus::kPartiallyFilled);
@@ -203,7 +224,8 @@ class LimitOrderBook {
         .SetLastQuantity(0)
         .SetLeavesQuantity(0)
         .SetOrderQuantity(order->GetExecutedQuantity())
-        .SetOrderStatus(OrderStatus::kCancelled);
+        .SetOrderStatus(OrderStatus::kCancelled)
+        .Mark();
     DispatchOrderStatus(EventType::kOrderCancelled, order);
   }
 

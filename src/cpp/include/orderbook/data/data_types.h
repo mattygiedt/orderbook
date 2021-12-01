@@ -99,6 +99,10 @@ class BaseData {
   auto& GetTransactionId() const { return transaction_id_; }
   auto& GetCreateTime() const { return create_tm_; }
   auto& GetLastModifyTime() const { return last_modify_tm_; }
+  auto Mark() -> BaseData& {
+    SetLastModifyTime(TimeUtil::EpochNanos());
+    return *this;
+  }
 
   auto GetSide() -> Side { return side_; }
   auto& GetSide() const { return side_; }
@@ -123,6 +127,19 @@ class BaseData {
   }
   auto SetOrderStatus(const OrderStatus order_status) -> BaseData& {
     order_status_ = order_status;
+    return *this;
+  }
+  auto UpdateOrderStatus() -> BaseData& {
+    if (executed_quantity_ == order_quantity_) {
+      leaves_quantity_ = 0;
+      order_status_ = OrderStatus::kFilled;
+    } else if (executed_quantity_ > 0) {
+      leaves_quantity_ = order_quantity_ - executed_quantity_;
+      order_status_ = OrderStatus::kPartiallyFilled;
+    } else if (executed_quantity_ == 0) {
+      leaves_quantity_ = order_quantity_;
+      order_status_ = OrderStatus::kNew;
+    }
     return *this;
   }
 

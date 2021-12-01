@@ -90,6 +90,19 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
     return request;
   }
 
+  static auto MakeModify(const OrderPtr& order, const Price& price,
+                         const Quantity& quantity)
+      -> OrderCancelReplaceRequest {
+    OrderCancelReplaceRequest request;
+    request.SetOrderId(order->GetOrderId());
+    request.SetSide(order->GetSide());
+    request.SetOrderPrice(price);
+    request.SetOrderQuantity(quantity);
+    request.SetClientOrderId(RandomStringView(kClientOrderIdSize));
+    request.SetOrigClientOrderId(order->GetClientOrderId());
+    return request;
+  }
+
  public:
   static auto EmptyTest() -> void {
     BidContainer container;
@@ -112,6 +125,72 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
     ASSERT_TRUE(resting_order->GetOrderPrice() == order->GetOrderPrice());
     ASSERT_TRUE(resting_order->GetClientOrderId() == order->GetClientOrderId());
     ASSERT_TRUE(resting_order->GetSide() == order->GetSide());
+  }
+
+  static auto ModifyPriceTest() -> void {
+    BidContainer container;
+    constexpr Price price = 456;
+    constexpr Price new_price = 256;
+    constexpr Quantity quantity = 33;
+
+    auto order = MakeOrder(price, quantity, SideCode::kBuy);
+
+    ASSERT_TRUE(order->GetRef() == 1);
+    ASSERT_TRUE(container.Add(order));
+    ASSERT_FALSE(container.IsEmpty());
+
+    auto modify = MakeModify(order, new_price, quantity);
+
+    auto&& [modified, modified_order] = container.Modify(modify);
+
+    ASSERT_TRUE(modified);
+    ASSERT_TRUE(new_price == modify.GetOrderPrice());
+    ASSERT_TRUE(modified_order->GetOrderPrice() == modify.GetOrderPrice());
+    ASSERT_TRUE(modified_order->GetOrderQuantity() ==
+                modify.GetOrderQuantity());
+  }
+
+  static auto ModifyQuantityTest(const Quantity& delta) -> void {
+    BidContainer container;
+    constexpr Price price = 456;
+    constexpr Quantity quantity = 3399;
+    const Quantity new_quantity = quantity + delta;
+
+    auto order = MakeOrder(price, quantity, SideCode::kBuy);
+
+    ASSERT_TRUE(order->GetRef() == 1);
+    ASSERT_TRUE(container.Add(order));
+    ASSERT_FALSE(container.IsEmpty());
+
+    auto modify = MakeModify(order, price, new_quantity);
+
+    auto&& [modified, modified_order] = container.Modify(modify);
+    ASSERT_TRUE(modified);
+    ASSERT_TRUE(modified_order->GetOrderPrice() == modify.GetOrderPrice());
+    ASSERT_TRUE(modified_order->GetOrderQuantity() ==
+                modify.GetOrderQuantity());
+  }
+
+  static auto ModifyPriceAndQuantityTest() -> void {
+    BidContainer container;
+    constexpr Price price = 456;
+    constexpr Price new_price = 46;
+    constexpr Quantity quantity = 33;
+    constexpr Quantity new_quantity = 913;
+
+    auto order = MakeOrder(price, quantity, SideCode::kBuy);
+
+    ASSERT_TRUE(order->GetRef() == 1);
+    ASSERT_TRUE(container.Add(order));
+    ASSERT_FALSE(container.IsEmpty());
+
+    auto modify = MakeModify(order, new_price, new_quantity);
+
+    auto&& [modified, modified_order] = container.Modify(modify);
+    ASSERT_TRUE(modified);
+    ASSERT_TRUE(modified_order->GetOrderPrice() == modify.GetOrderPrice());
+    ASSERT_TRUE(modified_order->GetOrderQuantity() ==
+                modify.GetOrderQuantity());
   }
 
   static auto RemoveTest() -> void {
@@ -173,6 +252,19 @@ using MapListContainerFixture =
 TEST_F(MapListContainerFixture, empty_test) { EmptyTest(); }  // NOLINT
 
 TEST_F(MapListContainerFixture, add_test) { AddTest(); }  // NOLINT
+
+TEST_F(MapListContainerFixture, modify_price_test) {  // NOLINT
+  ModifyPriceTest();
+}
+TEST_F(MapListContainerFixture, modify_quantity_up_test) {  // NOLINT
+  ModifyQuantityTest(100);                                  // NOLINT
+}
+TEST_F(MapListContainerFixture, modify_quantity_down_test) {  // NOLINT
+  ModifyQuantityTest(-100);                                   // NOLINT
+}
+TEST_F(MapListContainerFixture, modify_price_and_quantity_test) {  // NOLINT
+  ModifyPriceAndQuantityTest();
+}
 
 TEST_F(MapListContainerFixture, remove_test) { RemoveTest(); }  // NOLINT
 

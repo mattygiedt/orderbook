@@ -9,9 +9,11 @@ namespace orderbook::container {
 template <typename ContainerT, typename OrderT>
 concept ContainerConcept = requires(ContainerT c,
                                     boost::intrusive_ptr<OrderT> o,
+                                    orderbook::data::OrderCancelReplaceRequest ocrr,
                                     orderbook::data::OrderCancelRequest ocr)
 {
   c.Add(o);
+  c.Modify(ocrr);
   c.Remove(ocr);
   c.Remove(o);
   c.Front();
