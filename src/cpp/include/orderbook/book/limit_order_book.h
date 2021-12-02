@@ -1,6 +1,5 @@
 #pragma once
 
-#include "boost/intrusive_ptr.hpp"
 #include "orderbook/data/data_types.h"
 #include "orderbook/data/empty.h"
 #include "orderbook/data/event_types.h"
@@ -14,47 +13,44 @@ namespace orderbook::book {
 using namespace orderbook::data;
 
 template <typename BidContainerType, typename AskContainerType,
-          typename OrderType, typename PoolType, typename EventDispatcher>
+          typename OrderType, typename EventDispatcher>
 class LimitOrderBook {
  private:
   using Order = OrderType;
-  using OrderPtr = boost::intrusive_ptr<Order>;
   using EmptyType = orderbook::data::Empty;
 
   inline static OrderId order_id{0};
-  inline static PoolType& pool = PoolType::Instance();
 
  public:
   LimitOrderBook(std::shared_ptr<EventDispatcher> dispatcher)
       : dispatcher_(std::move(dispatcher)), data_{EmptyType()} {}
 
-  auto Add(const NewOrderSingle& new_order_single) -> void {
-    auto order = LimitOrderBook::MakeOrder(new_order_single);
+  /**
+   * Attempt to add a new order to the order book.
+   */
+  auto Add(const NewOrderSingle& add_request) -> void {
+    if (add_request.IsBuyOrder()) {
+      auto&& [added, order] = bids_.Add(add_request, ++order_id);
 
-    DispatchOrderStatus(EventType::kOrderPendingNew, order);
-
-    if (new_order_single.IsBuyOrder()) {
-      if (bids_.Add(order)) {
+      if (added) {
         // Order was accepted, and added to book
-        order->SetOrderStatus(OrderStatus::kNew);
         DispatchOrderStatus(EventType::kOrderNew, order);
         Match(SideCode::kBuy);
       } else {
         // Order was rejected, and not added to book
-        order->SetOrderStatus(OrderStatus::kRejected);
         DispatchOrderStatus(EventType::kOrderRejected, order);
         return;
       }
 
     } else {
-      if (asks_.Add(order)) {
+      auto&& [added, order] = asks_.Add(add_request, ++order_id);
+
+      if (added) {
         // Order was accepted, and added to book
-        order->SetOrderStatus(OrderStatus::kNew);
         DispatchOrderStatus(EventType::kOrderNew, order);
         Match(SideCode::kSell);
       } else {
         // Order was rejected, and not added to book
-        order->SetOrderStatus(OrderStatus::kRejected);
         DispatchOrderStatus(EventType::kOrderRejected, order);
         return;
       }
@@ -118,42 +114,42 @@ class LimitOrderBook {
       auto& bid = bids_.Front();
       auto& ask = asks_.Front();
 
-      if (bid->GetOrderPrice() >= ask->GetOrderPrice()) {
+      if (bid.GetOrderPrice() >= ask.GetOrderPrice()) {
         // Calculate the execution price
         Price prc;
         if (aggressor == SideCode::kBuy) {
-          prc = ask->GetOrderPrice();
+          prc = ask.GetOrderPrice();
         } else {
-          prc = bid->GetOrderPrice();
+          prc = bid.GetOrderPrice();
         }
 
-        if (bid->GetLeavesQuantity() == ask->GetLeavesQuantity()) {
-          const auto qty = bid->GetLeavesQuantity();
+        if (bid.GetLeavesQuantity() == ask.GetLeavesQuantity()) {
+          const auto qty = bid.GetLeavesQuantity();
 
           // fully execute bid
           ExecuteOrder(bid, prc, qty);
-          bids_.Remove(*bid);
+          bids_.Remove(bid);
 
           // fully execute ask
           ExecuteOrder(ask, prc, qty);
-          asks_.Remove(*ask);
+          asks_.Remove(ask);
 
-        } else if (bid->GetLeavesQuantity() < ask->GetLeavesQuantity()) {
-          const auto qty = bid->GetLeavesQuantity();
+        } else if (bid.GetLeavesQuantity() < ask.GetLeavesQuantity()) {
+          const auto qty = bid.GetLeavesQuantity();
 
           // fully execute bid
           ExecuteOrder(bid, prc, qty);
-          bids_.Remove(*bid);
+          bids_.Remove(bid);
 
           // partially execute ask
           ExecuteOrder(ask, prc, qty);
 
-        } else if (bid->GetLeavesQuantity() > ask->GetLeavesQuantity()) {
-          const auto qty = ask->GetLeavesQuantity();
+        } else if (bid.GetLeavesQuantity() > ask.GetLeavesQuantity()) {
+          const auto qty = ask.GetLeavesQuantity();
 
           // fully execute ask
           ExecuteOrder(ask, prc, qty);
-          asks_.Remove(*ask);
+          asks_.Remove(ask);
 
           // partially execute bid
           ExecuteOrder(bid, prc, qty);
@@ -178,54 +174,29 @@ class LimitOrderBook {
   }
 
  private:
-  static auto MakeOrder(const NewOrderSingle& new_order_single) -> OrderPtr {
-    auto ord = pool.MakeIntrusive();
-    ord->SetOrderId(++order_id)
-        .SetRoutingId(new_order_single.GetRoutingId())
-        .SetSessionId(new_order_single.GetSessionId())
-        .SetAccountId(new_order_single.GetAccountId())
-        .SetInstrumentId(new_order_single.GetInstrumentId())
-        .SetOrderType(new_order_single.GetOrderType())
-        .SetOrderPrice(new_order_single.GetOrderPrice())
-        .SetOrderQuantity(new_order_single.GetOrderQuantity())
-        .SetLeavesQuantity(new_order_single.GetOrderQuantity())
-        .SetSide(new_order_single.GetSide())
-        .SetTimeInForce(new_order_single.GetTimeInForce())
-        .SetClientOrderId(new_order_single.GetClientOrderId())
-        .SetOrderStatus(OrderStatus::kPendingNew)
-        .SetExecutedQuantity(0)
-        .SetLastPrice(0)
-        .SetLastQuantity(0)
-        .SetExecutedValue(0)
-        .Mark();
-    spdlog::info("MakeOrder order_id {} -> clord_id {}", ord->GetOrderId(),
-                 ord->GetClientOrderId());
-    return ord;
-  }
-
-  auto ExecuteOrder(OrderPtr& order, const Price& prc, const Quantity& qty)
+  auto ExecuteOrder(Order& order, const Price& prc, const Quantity& qty)
       -> void {
-    order->SetExecutedQuantity(order->GetExecutedQuantity() + qty)
-        .SetLeavesQuantity(order->GetLeavesQuantity() - qty)
-        .SetExecutedValue(order->GetExecutedValue() + (prc * qty))
+    order.SetExecutedQuantity(order.GetExecutedQuantity() + qty)
+        .SetLeavesQuantity(order.GetLeavesQuantity() - qty)
+        .SetExecutedValue(order.GetExecutedValue() + (prc * qty))
         .SetLastPrice(prc)
         .SetLastQuantity(qty)
         .Mark();
 
-    if (order->GetLeavesQuantity() > 0) {
-      order->SetOrderStatus(OrderStatus::kPartiallyFilled);
+    if (order.GetLeavesQuantity() > 0) {
+      order.SetOrderStatus(OrderStatus::kPartiallyFilled);
       DispatchOrderExecution(EventType::kOrderPartiallyFilled, order);
     } else {
-      order->SetOrderStatus(OrderStatus::kFilled);
+      order.SetOrderStatus(OrderStatus::kFilled);
       DispatchOrderExecution(EventType::kOrderFilled, order);
     }
   }
 
-  auto CancelOrder(OrderPtr& order) -> void {
-    order->SetLastPrice(0)
+  auto CancelOrder(Order& order) -> void {
+    order.SetLastPrice(0)
         .SetLastQuantity(0)
         .SetLeavesQuantity(0)
-        .SetOrderQuantity(order->GetExecutedQuantity())
+        .SetOrderQuantity(order.GetExecutedQuantity())
         .SetOrderStatus(OrderStatus::kCancelled)
         .Mark();
     DispatchOrderStatus(EventType::kOrderCancelled, order);
@@ -244,18 +215,18 @@ class LimitOrderBook {
   /**
    * Used to communicate order status back to client.
    */
-  auto DispatchOrderStatus(const EventType& event_type, const OrderPtr& order)
+  auto DispatchOrderStatus(const EventType& event_type, const Order& order)
       -> void {
-    data_ = ExecutionReport(++tx_id_, ++exec_id_, *order);
+    data_ = ExecutionReport(++tx_id_, ++exec_id_, order);
     dispatcher_->dispatch(event_type, data_);
   }
 
   /**
    * Used to communicate order executions back to client.
    */
-  auto DispatchOrderExecution(const EventType& event_type,
-                              const OrderPtr& order) -> void {
-    data_ = ExecutionReport(++tx_id_, ++exec_id_, *order);
+  auto DispatchOrderExecution(const EventType& event_type, const Order& order)
+      -> void {
+    data_ = ExecutionReport(++tx_id_, ++exec_id_, order);
     dispatcher_->dispatch(event_type, data_);
   }
 

@@ -48,6 +48,10 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
       -> OrderCancelRequest {
     OrderCancelRequest request;
     request.SetOrderId(id);
+    request.SetRoutingId(order.GetRoutingId());
+    request.SetSessionId(order.GetSessionId());
+    request.SetAccountId(order.GetAccountId());
+    request.SetInstrumentId(order.GetInstrumentId());
     request.SetSide(order.GetSide());
     request.SetOrderPrice(order.GetOrderPrice());
     request.SetOrderQuantity(order.GetOrderQuantity());
@@ -60,6 +64,10 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
       -> OrderCancelReplaceRequest {
     OrderCancelReplaceRequest request;
     request.SetOrderId(order.GetOrderId());
+    request.SetRoutingId(order.GetRoutingId());
+    request.SetSessionId(order.GetSessionId());
+    request.SetAccountId(order.GetAccountId());
+    request.SetInstrumentId(order.GetInstrumentId());
     request.SetSide(order.GetSide());
     request.SetOrderPrice(price);
     request.SetOrderQuantity(quantity);
@@ -99,9 +107,9 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     book.Add(sell_order);
 
     ASSERT_FALSE(book.Empty());
-    ASSERT_TRUE(pending_new_happened == 4);  // NOLINT
-    ASSERT_TRUE(new_happened == 4);          // NOLINT
-    ASSERT_TRUE(reject_happened == 0);       // NOLINT
+    ASSERT_TRUE(pending_new_happened == 0);  // NOLINT
+    ASSERT_TRUE(new_happened == 2);          // NOLINT
+    ASSERT_TRUE(reject_happened == 2);       // NOLINT
   }
 
   static auto ModifyTest(const SideCode& side) -> void {
@@ -159,7 +167,7 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     modify_request = MakeModify(order_ack, 22, 10);  // NOLINT
     book.Modify(modify_request);
     ASSERT_TRUE(cancel_reject_happened == 0);  // NOLINT
-    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(pending_new_happened == 0);    // NOLINT
     ASSERT_TRUE(new_happened == 1);            // NOLINT
     ASSERT_TRUE(modify_happened == 1);         // NOLINT
     ASSERT_TRUE(last_price == 22);             // NOLINT
@@ -169,7 +177,7 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     modify_request = MakeModify(order_ack, 22, 11);  // NOLINT
     book.Modify(modify_request);
     ASSERT_TRUE(cancel_reject_happened == 0);  // NOLINT
-    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(pending_new_happened == 0);    // NOLINT
     ASSERT_TRUE(new_happened == 1);            // NOLINT
     ASSERT_TRUE(modify_happened == 2);         // NOLINT
     ASSERT_TRUE(last_price == 22);             // NOLINT
@@ -179,7 +187,7 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     modify_request = MakeModify(order_ack, 22, 9);  // NOLINT
     book.Modify(modify_request);
     ASSERT_TRUE(cancel_reject_happened == 0);  // NOLINT
-    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(pending_new_happened == 0);    // NOLINT
     ASSERT_TRUE(new_happened == 1);            // NOLINT
     ASSERT_TRUE(modify_happened == 3);         // NOLINT
     ASSERT_TRUE(last_price == 22);             // NOLINT
@@ -189,7 +197,7 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     modify_request = MakeModify(order_ack, 10, 10);  // NOLINT
     book.Modify(modify_request);
     ASSERT_TRUE(cancel_reject_happened == 0);  // NOLINT
-    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(pending_new_happened == 0);    // NOLINT
     ASSERT_TRUE(new_happened == 1);            // NOLINT
     ASSERT_TRUE(modify_happened == 4);         // NOLINT
     ASSERT_TRUE(last_price == 10);             // NOLINT
@@ -198,7 +206,7 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     // Try to modify an 'old' order
     book.Modify(modify_request);
     ASSERT_TRUE(cancel_reject_happened == 1);  // NOLINT
-    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(pending_new_happened == 0);    // NOLINT
     ASSERT_TRUE(new_happened == 1);            // NOLINT
     ASSERT_TRUE(modify_happened == 4);         // NOLINT
     ASSERT_TRUE(last_price == 10);             // NOLINT
@@ -251,7 +259,7 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     book.Add(sell_order);
 
     ASSERT_TRUE(book.Empty());
-    ASSERT_TRUE(pending_new_happened == 2);   // NOLINT
+    ASSERT_TRUE(pending_new_happened == 0);   // NOLINT
     ASSERT_TRUE(new_happened == 2);           // NOLINT
     ASSERT_TRUE(reject_happened == 0);        // NOLINT
     ASSERT_TRUE(partial_exec_happened == 0);  // NOLINT
@@ -304,7 +312,7 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     book.Add(sell_order);
 
     ASSERT_TRUE(book.Empty());
-    ASSERT_TRUE(pending_new_happened == 3);   // NOLINT
+    ASSERT_TRUE(pending_new_happened == 0);   // NOLINT
     ASSERT_TRUE(new_happened == 3);           // NOLINT
     ASSERT_TRUE(reject_happened == 0);        // NOLINT
     ASSERT_TRUE(partial_exec_happened == 1);  // NOLINT

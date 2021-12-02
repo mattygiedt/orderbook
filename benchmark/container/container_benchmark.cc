@@ -17,18 +17,16 @@ using IntrusiveOrder = orderbook::data::IntrusiveLimitOrder<kPoolSize>;
 using IntrusiveOrderPool =
     orderbook::data::IntrusivePool<IntrusiveOrder,
                                    IntrusiveOrder::GetPoolSize()>;
-using IntrusiveOrderPtr = boost::intrusive_ptr<IntrusiveOrder>;
-using IntrusiveOrderVec = std::vector<IntrusiveOrderPtr>;
+using NewOrderSingleVec = std::vector<NewOrderSingle>;
 using MapListKey = orderbook::data::Price;
 using MapListBidContainer =
     orderbook::container::MapListContainer<MapListKey, IntrusiveOrder,
-                                           std::greater<>>;
+                                           IntrusiveOrderPool, std::greater<>>;
 using MapListAskContainer =
     orderbook::container::MapListContainer<MapListKey, IntrusiveOrder,
-                                           std::less<>>;
+                                           IntrusiveOrderPool, std::less<>>;
 
 OrderId order_id{0};
-IntrusiveOrderPool& intrusive_pool = IntrusiveOrderPool::Instance();
 
 auto MakeClientOrderId(const std::size_t& length) -> std::string {
   static std::size_t clord_id{0};
@@ -63,55 +61,27 @@ auto MakeNewOrderSingle() -> NewOrderSingle {
   return nos;
 }
 
-auto MakeIntrusiveOrder(const NewOrderSingle& new_order_single)
-    -> IntrusiveOrderPtr {
-  auto ord = intrusive_pool.MakeIntrusive();
-  ord->SetOrderId(++order_id)
-      .SetRoutingId(new_order_single.GetRoutingId())
-      .SetSessionId(new_order_single.GetSessionId())
-      .SetAccountId(new_order_single.GetAccountId())
-      .SetInstrumentId(new_order_single.GetInstrumentId())
-      .SetOrderType(new_order_single.GetOrderType())
-      .SetOrderPrice(new_order_single.GetOrderPrice())
-      .SetOrderQuantity(new_order_single.GetOrderQuantity())
-      .SetLeavesQuantity(new_order_single.GetOrderQuantity())
-      .SetSide(new_order_single.GetSide())
-      .SetTimeInForce(new_order_single.GetTimeInForce())
-      .SetClientOrderId(new_order_single.GetClientOrderId())
-      .SetOrderStatus(OrderStatus::kPendingNew)
-      .SetExecutedQuantity(0)
-      .SetLastPrice(0)
-      .SetLastQuantity(0)
-      .SetExecutedValue(0);
-  return ord;
-}
-
 template <typename Container>
-static void BM_AddRemoveIntrusiveOrder(benchmark::State& state) {
-  IntrusiveOrderVec vec;
+static void BM_AddIntrusiveOrder(benchmark::State& state) {
+  NewOrderSingleVec vec;
   Container container;
 
   vec.resize(kPoolSize);
   for (auto i = 0; i < kPoolSize; ++i) {
-    vec[i] = MakeIntrusiveOrder(MakeNewOrderSingle());
+    vec[i] = MakeNewOrderSingle();
   }
 
   for (auto _ : state) {
-    for (auto&& order : vec) {
-      if (!container.Add(order)) {
+    for (auto&& new_order : vec) {
+      if (!container.Add(new_order, ++order_id).first) {
         spdlog::error("container.Add(order): returned false");
-      }
-    }
-    for (auto&& order : vec) {
-      if (!container.Remove(*order).first) {
-        spdlog::error("container.Remove(order): returned false");
       }
     }
     container.Clear();
   }
 }
 
-BENCHMARK(BM_AddRemoveIntrusiveOrder<MapListBidContainer>);
-BENCHMARK(BM_AddRemoveIntrusiveOrder<MapListAskContainer>);
+BENCHMARK(BM_AddIntrusiveOrder<MapListBidContainer>);
+BENCHMARK(BM_AddIntrusiveOrder<MapListAskContainer>);
 
 BENCHMARK_MAIN();  // NOLINT

@@ -231,7 +231,7 @@ class ServerSocketProvider : public BaseProvider<zmq::socket_type::server> {
                       const std::uint32_t& routing_id,
                       const zmq::send_flags flag = zmq::send_flags::dontwait)
       -> zmq::send_result_t {
-    spdlog::info("SendFlatBuffer: buf {}, sz {}, id {}", buf, size, routing_id);
+    spdlog::info("SendFlatBuffer: sz {}, dest {}", size, routing_id);
     zmq::message_t msg{buf, size};
     msg.set_routing_id(routing_id);
     return socket_.send(msg, flag);

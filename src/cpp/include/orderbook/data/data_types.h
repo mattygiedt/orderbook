@@ -35,8 +35,8 @@ enum class TimeInForceCode : std::uint8_t {
   kUnknown = 0,
   kDay = 1,
   kGtc = 2,
-  kIoc = 3,
-  kFok = 4
+  kIoc = 3,  // IOC is immediate-or-cancel
+  kFok = 4   // FOK is all-or-none + immediate-or-cancel
 };
 
 enum class OrderTypeCode : std::uint8_t {

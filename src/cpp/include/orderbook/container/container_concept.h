@@ -1,6 +1,7 @@
 #pragma once
 
-#include "boost/intrusive_ptr.hpp"
+#include "orderbook/data/new_order_single.h"
+#include "orderbook/data/order_cancel_replace_request.h"
 #include "orderbook/data/order_cancel_request.h"
 
 namespace orderbook::container {
@@ -8,11 +9,13 @@ namespace orderbook::container {
 // clang-format off
 template <typename ContainerT, typename OrderT>
 concept ContainerConcept = requires(ContainerT c,
-                                    boost::intrusive_ptr<OrderT> o,
+                                    OrderT o,
+                                    orderbook::data::OrderId id,
+                                    orderbook::data::NewOrderSingle nos,
                                     orderbook::data::OrderCancelReplaceRequest ocrr,
                                     orderbook::data::OrderCancelRequest ocr)
 {
-  c.Add(o);
+  c.Add(nos, id);
   c.Modify(ocrr);
   c.Remove(ocr);
   c.Remove(o);

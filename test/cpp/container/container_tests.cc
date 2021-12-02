@@ -17,6 +17,7 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
   using BidContainer = typename Traits::BidContainerType;
   using AskContainer = typename Traits::AskContainerType;
   using Order = typename Traits::OrderType;
+  using ReturnPair = std::pair<bool, Order>;
   using OrderPtr = boost::intrusive_ptr<Order>;
   using Pool = typename Traits::PoolType;
   using NewOrderSingle = orderbook::data::NewOrderSingle;
@@ -55,8 +56,8 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
     return ord;
   }
 
-  static auto MakeOrder(const Price& price, const Quantity& quantity,
-                        const Side& side) -> OrderPtr {
+  static auto MakeNewOrderSingle(const Price& price, const Quantity& quantity,
+                                 const Side& side) -> NewOrderSingle {
     NewOrderSingle nos;
     nos.SetRoutingId(0);
     nos.SetSessionId(0);
@@ -68,28 +69,36 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
     nos.SetOrderPrice(price);
     nos.SetOrderQuantity(quantity);
     nos.SetSide(side);
-    return MakeOrder(nos);
+    return nos;
   }
 
-  static auto MakeCancel(const OrderPtr& order) -> OrderCancelRequest {
+  static auto MakeCancel(const Order& order) -> OrderCancelRequest {
     OrderCancelRequest request;
-    request.SetOrderId(order->GetOrderId());
-    request.SetSide(order->GetSide());
-    request.SetOrderPrice(order->GetOrderPrice());
-    request.SetOrderQuantity(order->GetOrderQuantity());
-    request.SetClientOrderId(order->GetClientOrderId());
+    request.SetOrderId(order.GetOrderId());
+    request.SetRoutingId(order.GetRoutingId());
+    request.SetSessionId(order.GetSessionId());
+    request.SetAccountId(order.GetAccountId());
+    request.SetInstrumentId(order.GetInstrumentId());
+    request.SetSide(order.GetSide());
+    request.SetOrderPrice(order.GetOrderPrice());
+    request.SetOrderQuantity(order.GetOrderQuantity());
+    request.SetClientOrderId(order.GetClientOrderId());
     return request;
   }
 
-  static auto MakeModify(const OrderPtr& order, const Price& price,
+  static auto MakeModify(const Order& order, const Price& price,
                          const Quantity& quantity)
       -> OrderCancelReplaceRequest {
     OrderCancelReplaceRequest request;
-    request.SetOrderId(order->GetOrderId());
-    request.SetSide(order->GetSide());
+    request.SetOrderId(order.GetOrderId());
+    request.SetRoutingId(order.GetRoutingId());
+    request.SetSessionId(order.GetSessionId());
+    request.SetAccountId(order.GetAccountId());
+    request.SetInstrumentId(order.GetInstrumentId());
+    request.SetSide(order.GetSide());
     request.SetOrderPrice(price);
     request.SetOrderQuantity(quantity);
-    request.SetOrigClientOrderId(order->GetClientOrderId());
+    request.SetOrigClientOrderId(order.GetClientOrderId());
     request.SetClientOrderId(MakeClientOrderId(kClientOrderIdSize));
     return request;
   }
@@ -102,138 +111,237 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
 
   static auto AddTest() -> void {
     BidContainer container;
+    ReturnPair return_pair;
 
-    auto order = MakeOrder(456,  // NOLINT
-                           33,   // NOLINT
-                           SideCode::kBuy);
+    auto new_order = MakeNewOrderSingle(456,  // NOLINT
+                                        33,   // NOLINT
+                                        SideCode::kBuy);
 
-    ASSERT_TRUE(order->GetRef() == 1);
-    ASSERT_TRUE(container.Add(order));
+    return_pair = container.Add(new_order, ++order_id);
+
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderStatus() == OrderStatus::kNew);
     ASSERT_FALSE(container.IsEmpty());
 
     auto& resting_order = container.Front();
-    ASSERT_TRUE(resting_order->GetOrderQuantity() == order->GetOrderQuantity());
-    ASSERT_TRUE(resting_order->GetOrderPrice() == order->GetOrderPrice());
-    ASSERT_TRUE(resting_order->GetClientOrderId() == order->GetClientOrderId());
-    ASSERT_TRUE(resting_order->GetSide() == order->GetSide());
+    ASSERT_TRUE(resting_order.GetOrderQuantity() ==
+                return_pair.second.GetOrderQuantity());
+    ASSERT_TRUE(resting_order.GetOrderPrice() ==
+                return_pair.second.GetOrderPrice());
+    ASSERT_TRUE(resting_order.GetClientOrderId() ==
+                return_pair.second.GetClientOrderId());
+    ASSERT_TRUE(resting_order.GetSide() == return_pair.second.GetSide());
+
+    return_pair = container.Add(new_order, ++order_id);
+    ASSERT_FALSE(return_pair.first);
   }
 
   static auto ModifyPriceTest() -> void {
     BidContainer container;
+    ReturnPair return_pair;
+    OrderCancelReplaceRequest modify_request;
+
     constexpr Price price = 456;
     constexpr Price new_price = 256;
     constexpr Quantity quantity = 33;
 
-    auto order = MakeOrder(price, quantity, SideCode::kBuy);
+    // Add the order
+    auto new_order = MakeNewOrderSingle(price, quantity, SideCode::kBuy);
+    return_pair = container.Add(new_order, ++order_id);
 
-    ASSERT_TRUE(order->GetRef() == 1);
-    ASSERT_TRUE(container.Add(order));
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderStatus() == OrderStatus::kNew);
     ASSERT_FALSE(container.IsEmpty());
 
-    auto modify = MakeModify(order, new_price, quantity);
+    // Modify the order price
+    modify_request = MakeModify(return_pair.second, new_price, quantity);
+    return_pair = container.Modify(modify_request);
 
-    auto&& [modified, modified_order] = container.Modify(modify);
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(new_price == modify_request.GetOrderPrice());
+    ASSERT_TRUE(return_pair.second.GetOrderPrice() ==
+                modify_request.GetOrderPrice());
+    ASSERT_TRUE(return_pair.second.GetOrderQuantity() ==
+                modify_request.GetOrderQuantity());
 
-    ASSERT_TRUE(modified);
-    ASSERT_TRUE(new_price == modify.GetOrderPrice());
-    ASSERT_TRUE(modified_order->GetOrderPrice() == modify.GetOrderPrice());
-    ASSERT_TRUE(modified_order->GetOrderQuantity() ==
-                modify.GetOrderQuantity());
+    // Modify the order price (again)
+    modify_request =
+        MakeModify(return_pair.second, new_price + price, quantity);
+    return_pair = container.Modify(modify_request);
+
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE((new_price + price) == modify_request.GetOrderPrice());
+    ASSERT_TRUE(return_pair.second.GetOrderPrice() ==
+                modify_request.GetOrderPrice());
+    ASSERT_TRUE(return_pair.second.GetOrderQuantity() ==
+                modify_request.GetOrderQuantity());
   }
 
   static auto ModifyQuantityTest(const Quantity& delta) -> void {
     BidContainer container;
+    ReturnPair return_pair;
+    OrderCancelReplaceRequest modify_request;
+
     constexpr Price price = 456;
     constexpr Quantity quantity = 3399;
     const Quantity new_quantity = quantity + delta;
 
-    auto order = MakeOrder(price, quantity, SideCode::kBuy);
+    // Add the order
+    auto new_order = MakeNewOrderSingle(price, quantity, SideCode::kBuy);
+    return_pair = container.Add(new_order, ++order_id);
 
-    ASSERT_TRUE(order->GetRef() == 1);
-    ASSERT_TRUE(container.Add(order));
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderStatus() == OrderStatus::kNew);
     ASSERT_FALSE(container.IsEmpty());
 
-    auto modify = MakeModify(order, price, new_quantity);
+    // Modify the order quantity
+    modify_request = MakeModify(return_pair.second, price, new_quantity);
+    return_pair = container.Modify(modify_request);
 
-    auto&& [modified, modified_order] = container.Modify(modify);
-    ASSERT_TRUE(modified);
-    ASSERT_TRUE(modified_order->GetOrderPrice() == modify.GetOrderPrice());
-    ASSERT_TRUE(modified_order->GetOrderQuantity() ==
-                modify.GetOrderQuantity());
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderPrice() ==
+                modify_request.GetOrderPrice());
+    ASSERT_TRUE(return_pair.second.GetOrderQuantity() ==
+                modify_request.GetOrderQuantity());
+
+    // Modify the order quantity (again)
+    modify_request =
+        MakeModify(return_pair.second, price, new_quantity + delta);
+    return_pair = container.Modify(modify_request);
+
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderPrice() ==
+                modify_request.GetOrderPrice());
+    ASSERT_TRUE(return_pair.second.GetOrderQuantity() ==
+                modify_request.GetOrderQuantity());
   }
 
   static auto ModifyPriceAndQuantityTest() -> void {
     BidContainer container;
+    ReturnPair return_pair;
+    OrderCancelReplaceRequest modify_request;
+
     constexpr Price price = 456;
     constexpr Price new_price = 46;
     constexpr Quantity quantity = 33;
     constexpr Quantity new_quantity = 913;
 
-    auto order = MakeOrder(price, quantity, SideCode::kBuy);
+    // Add the order
+    auto new_order = MakeNewOrderSingle(price, quantity, SideCode::kBuy);
+    return_pair = container.Add(new_order, ++order_id);
 
-    ASSERT_TRUE(order->GetRef() == 1);
-    ASSERT_TRUE(container.Add(order));
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderStatus() == OrderStatus::kNew);
     ASSERT_FALSE(container.IsEmpty());
 
-    auto modify = MakeModify(order, new_price, new_quantity);
+    // Modify both price and quantity
+    modify_request = MakeModify(return_pair.second, new_price, new_quantity);
+    return_pair = container.Modify(modify_request);
 
-    auto&& [modified, modified_order] = container.Modify(modify);
-    ASSERT_TRUE(modified);
-    ASSERT_TRUE(modified_order->GetOrderPrice() == modify.GetOrderPrice());
-    ASSERT_TRUE(modified_order->GetOrderQuantity() ==
-                modify.GetOrderQuantity());
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderPrice() ==
+                modify_request.GetOrderPrice());
+    ASSERT_TRUE(return_pair.second.GetOrderQuantity() ==
+                modify_request.GetOrderQuantity());
+
+    // Modify both price and quantity (again)
+    modify_request = MakeModify(return_pair.second, new_price + price,
+                                new_quantity + quantity);
+    return_pair = container.Modify(modify_request);
+
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderPrice() ==
+                modify_request.GetOrderPrice());
+    ASSERT_TRUE(return_pair.second.GetOrderQuantity() ==
+                modify_request.GetOrderQuantity());
   }
 
   static auto RemoveTest() -> void {
     AskContainer container;
+    ReturnPair return_pair;
+    OrderCancelRequest cancel_request;
 
-    auto order = MakeOrder(510,  // NOLINT
-                           81,   // NOLINT
-                           SideCode::kSell);
+    constexpr Price price = 456;
+    constexpr Quantity quantity = 3399;
 
-    ASSERT_TRUE(order->GetRef() == 1);
-    ASSERT_TRUE(container.Add(order));
-    ASSERT_TRUE(order->GetRef() == 2);
+    // Add the order
+    auto new_order = MakeNewOrderSingle(price, quantity, SideCode::kSell);
+    return_pair = container.Add(new_order, ++order_id);
+
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderStatus() == OrderStatus::kNew);
     ASSERT_FALSE(container.IsEmpty());
 
-    auto cancel = MakeCancel(order);
+    // Cancel the order
+    cancel_request = MakeCancel(return_pair.second);
+    return_pair = container.Remove(cancel_request);
 
-    auto&& [removed, removed_order] = container.Remove(cancel);
-    ASSERT_TRUE(removed);
-    ASSERT_TRUE(removed_order->GetOrderId() == order->GetOrderId());
-    ASSERT_TRUE(order->GetRef() == 2);
-    ASSERT_TRUE(removed_order->GetRef() == 2);
+    ASSERT_TRUE(return_pair.first);
+    ASSERT_TRUE(return_pair.second.GetOrderId() == cancel_request.GetOrderId());
+
+    // Cancel the order (again)
+    return_pair = container.Remove(cancel_request);
+    ASSERT_FALSE(return_pair.first);
   }
 
   static auto PriceLevelTest() -> void {
     BidContainer bids;
     AskContainer asks;
 
-    ASSERT_TRUE(bids.Add(MakeOrder(20, 10, SideCode::kBuy)));  // NOLINT
-    ASSERT_TRUE(bids.Add(MakeOrder(19, 10, SideCode::kBuy)));  // NOLINT
-    ASSERT_TRUE(bids.Add(MakeOrder(21, 10, SideCode::kBuy)));  // NOLINT
-    ASSERT_TRUE(bids.Add(MakeOrder(20, 10, SideCode::kBuy)));  // NOLINT
+    bids.Add(MakeNewOrderSingle(20, 10, SideCode::kBuy),  // NOLINT
+             ++order_id);
+    bids.Add(MakeNewOrderSingle(19, 10, SideCode::kBuy),  // NOLINT
+             ++order_id);
+    bids.Add(MakeNewOrderSingle(21, 10, SideCode::kBuy),  // NOLINT
+             ++order_id);
+    bids.Add(MakeNewOrderSingle(20, 10, SideCode::kBuy),  // NOLINT
+             ++order_id);
 
-    ASSERT_TRUE(asks.Add(MakeOrder(20, 10, SideCode::kSell)));  // NOLINT
-    ASSERT_TRUE(asks.Add(MakeOrder(19, 10, SideCode::kSell)));  // NOLINT
-    ASSERT_TRUE(asks.Add(MakeOrder(21, 10, SideCode::kSell)));  // NOLINT
-    ASSERT_TRUE(asks.Add(MakeOrder(20, 10, SideCode::kSell)));  // NOLINT
+    asks.Add(MakeNewOrderSingle(20, 10, SideCode::kSell),  // NOLINT
+             ++order_id);
+    asks.Add(MakeNewOrderSingle(19, 10, SideCode::kSell),  // NOLINT
+             ++order_id);
+    asks.Add(MakeNewOrderSingle(21, 10, SideCode::kSell),  // NOLINT
+             ++order_id);
+    asks.Add(MakeNewOrderSingle(20, 10, SideCode::kSell),  // NOLINT
+             ++order_id);
 
     ASSERT_TRUE(bids.Count() == 4);  // NOLINT
     ASSERT_TRUE(asks.Count() == 4);  // NOLINT
 
-    ASSERT_TRUE(bids.Front()->GetOrderPrice() == 21);  // NOLINT
-    ASSERT_TRUE(asks.Front()->GetOrderPrice() == 19);  // NOLINT
+    ASSERT_TRUE(bids.Front().GetOrderPrice() == 21);  // NOLINT
+    ASSERT_TRUE(asks.Front().GetOrderPrice() == 19);  // NOLINT
 
     // IMPORTANT! -- notice how we're using OrderPtr and not OrderCancelRequest
-    bids.Remove(*bids.Front());
-    asks.Remove(*asks.Front());
+    bids.Remove(bids.Front());
+    asks.Remove(asks.Front());
 
     ASSERT_TRUE(bids.Count() == 3);  // NOLINT
     ASSERT_TRUE(asks.Count() == 3);  // NOLINT
 
-    ASSERT_TRUE(bids.Front()->GetOrderPrice() == 20);  // NOLINT
-    ASSERT_TRUE(asks.Front()->GetOrderPrice() == 20);  // NOLINT
+    ASSERT_TRUE(bids.Front().GetOrderPrice() == 20);  // NOLINT
+    ASSERT_TRUE(asks.Front().GetOrderPrice() == 20);  // NOLINT
+
+    bids.Remove(bids.Front());
+    asks.Remove(asks.Front());
+
+    ASSERT_TRUE(bids.Count() == 2);  // NOLINT
+    ASSERT_TRUE(asks.Count() == 2);  // NOLINT
+
+    bids.Remove(bids.Front());
+    asks.Remove(asks.Front());
+
+    ASSERT_TRUE(bids.Count() == 1);  // NOLINT
+    ASSERT_TRUE(asks.Count() == 1);  // NOLINT
+
+    bids.Remove(bids.Front());
+    asks.Remove(asks.Front());
+
+    ASSERT_TRUE(bids.Count() == 0);  // NOLINT
+    ASSERT_TRUE(asks.Count() == 0);  // NOLINT
+
+    ASSERT_TRUE(bids.IsEmpty());
+    ASSERT_TRUE(asks.IsEmpty());
   }
 };
 
