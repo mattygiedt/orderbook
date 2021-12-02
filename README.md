@@ -58,9 +58,10 @@ BM_AddRemoveIntrusiveOrder<MapListAskContainer>       2745 ns         2745 ns   
 
 ### TODO
 * `NewOrderSingle` message validation
-* `OrderCancelRequest` message validation
+* ~~`OrderCancelRequest` message validation~~
+* ~~`OrderCancelReplaceRequest` message validation~~
 * ~~Wrap `intrusive_ptr` around `LimitOrder` and allocate from an object_pool~~
-* Support `OrderCancelReplaceRequest` workflow
+* ~~Support `OrderCancelReplaceRequest` workflow~~
 * Support cancel-on-disconnect
 * Performance benchmarking
 * FIX.4.2 Client Gateway
