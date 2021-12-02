@@ -5,7 +5,7 @@ Put simply, the complex technology in play at the massive exchanges like the CME
 
 **Please Do Not Use This Code In Production**
 
-This project is meant to be educational. It employs the tinyest of testing, which validates simple limit order book semantics, and assumes best behavior of our market participants.
+This project is meant to be educational. It employs the tinyest of testing, which validates simple [add, modify, delete] limit order book semantics, and assumes best behavior of our market participants.
 
 Still, I think it's pretty cool, and would love to hear your comments and / or suggested improvements to the `MapListContainer`!
 
