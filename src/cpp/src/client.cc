@@ -128,6 +128,7 @@ auto main(int argc, char** argv) -> int {
   };
 
   constexpr static std::size_t kBufferSize = 2048;
+  constexpr static SessionId kSessionId = 1337;
   flatbuffers::FlatBufferBuilder builder{kBufferSize};
 
   using ClientSocket = orderbook::util::ClientSocketProvider;
@@ -140,7 +141,7 @@ auto main(int argc, char** argv) -> int {
         .SetOrderQuantity(qty)
         .SetSide(side)
         .SetInstrumentId(1)
-        .SetSessionId(1)
+        .SetSessionId(kSessionId)
         .SetAccountId(1)
         .SetClientOrderId(cl_ord_id)
         .SetOrderType(OrderType::kLimit)
@@ -202,6 +203,7 @@ auto main(int argc, char** argv) -> int {
                                const OrderId& id) {
     OrderCancelRequest cancel;
     cancel.SetOrderId(id)
+        .SetSessionId(kSessionId)
         .SetOrderPrice(prc)
         .SetOrderQuantity(qty)
         .SetSide(side)

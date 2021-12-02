@@ -375,8 +375,9 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
   }
 };
 
+// orderbook::container::MapListContainer tests
 using MapListOrderBookFixture =
-    OrderBookFixture<orderbook::MapListOrderBookTraits>;
+    OrderBookFixture<orderbook::MapListOrderBookTraits<>>;
 
 TEST_F(MapListOrderBookFixture, add_test) { AddTest(); }  // NOLINT
 
@@ -396,3 +397,26 @@ TEST_F(MapListOrderBookFixture, partial_execute_test) {  // NOLINT
 }
 
 TEST_F(MapListOrderBookFixture, cancel_test) { CancelTest(); }  // NOLINT
+
+// orderbook::container::IntrusiveListContainer tests
+using IntrusiveListContainerFixture =
+    OrderBookFixture<orderbook::IntrusiveListOrderBookTraits<>>;
+
+TEST_F(IntrusiveListContainerFixture, add_test) { AddTest(); }  // NOLINT
+
+TEST_F(IntrusiveListContainerFixture, modify_buy_test) {  // NOLINT
+  ModifyTest(SideCode::kBuy);
+}
+TEST_F(IntrusiveListContainerFixture, modify_sell_test) {  // NOLINT
+  ModifyTest(SideCode::kSell);
+}
+
+TEST_F(IntrusiveListContainerFixture, simple_execute_test) {  // NOLINT
+  SimpleExecuteTest();
+}
+
+TEST_F(IntrusiveListContainerFixture, partial_execute_test) {  // NOLINT
+  PartialExecuteTest();
+}
+
+TEST_F(IntrusiveListContainerFixture, cancel_test) { CancelTest(); }  // NOLINT

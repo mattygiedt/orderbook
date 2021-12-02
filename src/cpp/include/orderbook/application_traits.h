@@ -12,6 +12,7 @@
 #include "orderbook/book/book_concept.h"
 #include "orderbook/book/limit_order_book.h"
 #include "orderbook/container/container_concept.h"
+#include "orderbook/container/intrusive_list_container.h"
 #include "orderbook/container/map_list_container.h"
 #include "orderbook/data/event_types.h"
 #include "orderbook/data/limit_order.h"
@@ -23,10 +24,10 @@
 
 namespace orderbook {
 
+template <std::size_t PoolSize = 16384>
 struct MapListOrderBookTraits {
-  static constexpr std::size_t kPoolSize = 1024 * 16;
   using PriceLevelKey = orderbook::data::Price;
-  using OrderType = orderbook::data::IntrusiveLimitOrder<kPoolSize>;
+  using OrderType = orderbook::data::IntrusiveLimitOrder<PoolSize>;
   using PoolType =
       orderbook::data::IntrusivePool<OrderType, OrderType::GetPoolSize()>;
   using EventType = orderbook::data::EventType;
@@ -46,12 +47,10 @@ struct MapListOrderBookTraits {
                                       OrderType, EventDispatcher>;
 };
 
-/*
+template <std::size_t PoolSize = 16384>
 struct IntrusiveListOrderBookTraits {
-  static constexpr std::size_t kPoolSize = 1024 * 16;
   using PriceLevelKey = orderbook::data::Price;
-  using OrderType = orderbook::data::IntrusiveListLimitOrder<kPoolSize>;
-  using ContainerType = orderbook::data::IntrusiveListContainer;
+  using OrderType = orderbook::data::IntrusiveListLimitOrder<PoolSize>;
   using PoolType =
       orderbook::data::IntrusiveListPool<OrderType, OrderType::GetPoolSize()>;
   using EventType = orderbook::data::EventType;
@@ -70,6 +69,5 @@ struct IntrusiveListOrderBookTraits {
       orderbook::book::LimitOrderBook<BidContainerType, AskContainerType,
                                       OrderType, EventDispatcher>;
 };
-*/
 
 }  // namespace orderbook

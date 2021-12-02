@@ -7,7 +7,7 @@ Put simply, the complex technology in play at the massive exchanges like the CME
 
 This project is meant to be educational. It employs the tinyest of testing, which validates simple [add, modify, delete] limit order book semantics, and assumes best behavior of our market participants.
 
-Still, I think it's pretty cool, and would love to hear your comments and / or suggested improvements to the `MapListContainer`!
+Still, I think it's pretty cool, and would love to hear your comments and / or suggested improvements to the `MapListContainer` and `IntrusiveListContainer` implementations!
 
 ### Building
 Project uses VSCode `.devcontainer` support -- look in the directory for a sample `Dockerfile` if you want to roll your own.
@@ -39,21 +39,23 @@ That's basically what you'll find here, written in my best attempt at modern C++
 
 ### Benchmarking
 ```
-root@345a55e505f8:/workspaces/orderbook/build# ./benchmark/container/container_benchmark
-2021-12-01T03:47:16+00:00
-Running ./benchmark/container/container_benchmark
+root@345a55e505f8:/workspaces/orderbook/build/benchmark/container# ./container_benchmark
+2021-12-02T19:31:39+00:00
+Running ./container_benchmark
 Run on (6 X 2999.99 MHz CPU s)
 CPU Caches:
   L1 Data 32 KiB (x6)
   L1 Instruction 32 KiB (x6)
   L2 Unified 256 KiB (x6)
   L3 Unified 9216 KiB (x1)
-Load Average: 0.15, 0.29, 0.32
-------------------------------------------------------------------------------------------
-Benchmark                                                Time             CPU   Iterations
-------------------------------------------------------------------------------------------
-BM_AddRemoveIntrusiveOrder<MapListBidContainer>       2721 ns         2721 ns       265402
-BM_AddRemoveIntrusiveOrder<MapListAskContainer>       2745 ns         2745 ns       264218
+Load Average: 0.87, 0.66, 0.45
+------------------------------------------------------------------------------------------------------
+Benchmark                                                            Time             CPU   Iterations
+------------------------------------------------------------------------------------------------------
+BM_AddOrder<typename MapListTraits::BidContainerType>             5044 ns         5044 ns       126367
+BM_AddOrder<typename MapListTraits::AskContainerType>             5137 ns         5137 ns       135224
+BM_AddOrder<typename IntrusiveListTraits::BidContainerType>       4613 ns         4613 ns       151283
+BM_AddOrder<typename IntrusiveListTraits::AskContainerType>       4476 ns         4476 ns       154313
 ```
 
 ### TODO

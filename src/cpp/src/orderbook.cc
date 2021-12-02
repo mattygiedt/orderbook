@@ -218,7 +218,8 @@ auto main(int argc, char** argv) -> int {
 
   std::string addr(argv[1]);
 
-  OrderBook<typename orderbook::MapListOrderBookTraits> book(addr);
+  // OrderBook<typename orderbook::MapListOrderBookTraits<>> book(addr);
+  OrderBook<typename orderbook::IntrusiveListOrderBookTraits<>> book(addr);
   book.GenerateOrderBooks();
   book.RegisterListeners();
   book.Run();

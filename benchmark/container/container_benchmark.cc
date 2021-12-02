@@ -6,25 +6,14 @@
 
 using namespace orderbook::data;
 
+using NewOrderSingleVec = std::vector<NewOrderSingle>;
+
 constexpr auto kPoolSize = 16;
 constexpr auto kClientOrderIdSize = 8;
 constexpr int kMaxPrc = 75;
 constexpr int kMinPrc = 25;
 constexpr int kMaxQty = 500;
 constexpr int kMinQty = 100;
-
-using IntrusiveOrder = orderbook::data::IntrusiveLimitOrder<kPoolSize>;
-using IntrusiveOrderPool =
-    orderbook::data::IntrusivePool<IntrusiveOrder,
-                                   IntrusiveOrder::GetPoolSize()>;
-using NewOrderSingleVec = std::vector<NewOrderSingle>;
-using MapListKey = orderbook::data::Price;
-using MapListBidContainer =
-    orderbook::container::MapListContainer<MapListKey, IntrusiveOrder,
-                                           IntrusiveOrderPool, std::greater<>>;
-using MapListAskContainer =
-    orderbook::container::MapListContainer<MapListKey, IntrusiveOrder,
-                                           IntrusiveOrderPool, std::less<>>;
 
 OrderId order_id{0};
 
@@ -62,12 +51,12 @@ auto MakeNewOrderSingle() -> NewOrderSingle {
 }
 
 template <typename Container>
-static void BM_AddIntrusiveOrder(benchmark::State& state) {
+static void BM_AddOrder(benchmark::State& state) {
   NewOrderSingleVec vec;
   Container container;
 
-  vec.resize(kPoolSize);
-  for (auto i = 0; i < kPoolSize; ++i) {
+  vec.resize(Container::GetPoolSize());
+  for (std::size_t i = 0; i < Container::GetPoolSize(); ++i) {
     vec[i] = MakeNewOrderSingle();
   }
 
@@ -81,7 +70,14 @@ static void BM_AddIntrusiveOrder(benchmark::State& state) {
   }
 }
 
-BENCHMARK(BM_AddIntrusiveOrder<MapListBidContainer>);
-BENCHMARK(BM_AddIntrusiveOrder<MapListAskContainer>);
+using MapListTraits = typename orderbook::MapListOrderBookTraits<kPoolSize>;
+using IntrusiveListTraits =
+    typename orderbook::IntrusiveListOrderBookTraits<kPoolSize>;
+
+BENCHMARK(BM_AddOrder<typename MapListTraits::BidContainerType>);
+BENCHMARK(BM_AddOrder<typename MapListTraits::AskContainerType>);
+
+BENCHMARK(BM_AddOrder<typename IntrusiveListTraits::BidContainerType>);
+BENCHMARK(BM_AddOrder<typename IntrusiveListTraits::AskContainerType>);
 
 BENCHMARK_MAIN();  // NOLINT

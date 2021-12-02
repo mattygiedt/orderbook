@@ -34,28 +34,6 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
     return clord_id_str;
   }
 
-  static auto MakeOrder(const NewOrderSingle& new_order_single) -> OrderPtr {
-    auto ord = pool.MakeIntrusive();
-    ord->SetOrderId(++order_id)
-        .SetRoutingId(new_order_single.GetRoutingId())
-        .SetSessionId(new_order_single.GetSessionId())
-        .SetAccountId(new_order_single.GetAccountId())
-        .SetInstrumentId(new_order_single.GetInstrumentId())
-        .SetOrderType(new_order_single.GetOrderType())
-        .SetOrderPrice(new_order_single.GetOrderPrice())
-        .SetOrderQuantity(new_order_single.GetOrderQuantity())
-        .SetLeavesQuantity(new_order_single.GetOrderQuantity())
-        .SetSide(new_order_single.GetSide())
-        .SetTimeInForce(new_order_single.GetTimeInForce())
-        .SetClientOrderId(new_order_single.GetClientOrderId())
-        .SetOrderStatus(OrderStatus::kPendingNew)
-        .SetExecutedQuantity(0)
-        .SetLastPrice(0)
-        .SetLastQuantity(0)
-        .SetExecutedValue(0);
-    return ord;
-  }
-
   static auto MakeNewOrderSingle(const Price& price, const Quantity& quantity,
                                  const Side& side) -> NewOrderSingle {
     NewOrderSingle nos;
@@ -345,8 +323,9 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
   }
 };
 
+// orderbook::container::MapListContainer tests
 using MapListContainerFixture =
-    ContainerFixture<orderbook::MapListOrderBookTraits>;
+    ContainerFixture<orderbook::MapListOrderBookTraits<>>;
 
 TEST_F(MapListContainerFixture, empty_test) { EmptyTest(); }  // NOLINT
 
@@ -368,5 +347,33 @@ TEST_F(MapListContainerFixture, modify_price_and_quantity_test) {  // NOLINT
 TEST_F(MapListContainerFixture, remove_test) { RemoveTest(); }  // NOLINT
 
 TEST_F(MapListContainerFixture, price_level_test) {  // NOLINT
+  PriceLevelTest();
+}
+
+// orderbook::container::IntrusiveListContainer tests
+using IntrusiveListContainerFixture =
+    ContainerFixture<orderbook::IntrusiveListOrderBookTraits<>>;
+
+TEST_F(IntrusiveListContainerFixture, empty_test) { EmptyTest(); }  // NOLINT
+
+TEST_F(IntrusiveListContainerFixture, add_test) { AddTest(); }  // NOLINT
+
+TEST_F(IntrusiveListContainerFixture, modify_price_test) {  // NOLINT
+  ModifyPriceTest();
+}
+TEST_F(IntrusiveListContainerFixture, modify_quantity_up_test) {  // NOLINT
+  ModifyQuantityTest(100);                                        // NOLINT
+}
+TEST_F(IntrusiveListContainerFixture, modify_quantity_down_test) {  // NOLINT
+  ModifyQuantityTest(-100);                                         // NOLINT
+}
+TEST_F(IntrusiveListContainerFixture,     // NOLINT
+       modify_price_and_quantity_test) {  // NOLINT
+  ModifyPriceAndQuantityTest();
+}
+
+TEST_F(IntrusiveListContainerFixture, remove_test) { RemoveTest(); }  // NOLINT
+
+TEST_F(IntrusiveListContainerFixture, price_level_test) {  // NOLINT
   PriceLevelTest();
 }

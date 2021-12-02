@@ -4,7 +4,7 @@
 #include <unordered_set>
 
 #include "boost/functional/hash.hpp"
-#include "boost/intrusive_ptr.hpp"
+#include "boost/intrusive/list.hpp"
 #include "orderbook/data/data_types.h"
 #include "orderbook/data/new_order_single.h"
 #include "orderbook/data/order_cancel_request.h"
@@ -12,15 +12,14 @@
 namespace orderbook::container {
 
 template <typename Key, typename Order, typename Pool, typename Compare>
-class MapListContainer {
+class IntrusiveListContainer {
  private:
   using OrderId = orderbook::data::OrderId;
   using SessionId = orderbook::data::SessionId;
   using ClientOrderId = orderbook::data::ClientOrderId;
   using OrderStatus = orderbook::data::OrderStatus;
-  using OrderPtr = boost::intrusive_ptr<Order>;
   using ReturnPair = std::pair<bool, Order>;
-  using List = std::list<OrderPtr>;
+  using List = boost::intrusive::list<Order>;
   using Iterator = typename List::iterator;
   using PriceLevelMap = std::map<Key, List, Compare>;
   using OrderIdMap = std::unordered_map<OrderId, Iterator>;
@@ -45,8 +44,8 @@ class MapListContainer {
    */
   auto Add(const NewOrderSingle& order_request, const OrderId& order_id)
       -> ReturnPair {
-    // Create a new order intrusive_ptr
-    auto order = MapListContainer::MakeOrder(order_request, order_id);
+    // Create a new order
+    auto& order = IntrusiveListContainer::MakeOrder(order_request, order_id);
 
     // Does our clord_id set contain the requested client_order_id key?
     const ClientOrderIdKey& clord_id_key = {order_request.GetSessionId(),
@@ -59,19 +58,24 @@ class MapListContainer {
           "MapListContainer::Add duplicate clord_id '{}' for session {}, "
           "rejecting order_id: {}",
           clord_id_key.second, clord_id_key.first, order_id);
-      order->SetOrderStatus(OrderStatus::kRejected);
-      return {false, *order};
+
+      // Reject the order and put it back into the object pool
+      order.SetOrderStatus(OrderStatus::kRejected);
+      order.Release();
+
+      return {false, order};
     }
 
     // Add the order to the order book
-    order->SetOrderStatus(OrderStatus::kNew);
-    auto& list = price_level_map_[order->GetOrderPrice()];
-    auto&& iter = list.insert(list.end(), std::move(order));
+    order.SetOrderStatus(OrderStatus::kNew);
+    auto& list = price_level_map_[order.GetOrderPrice()];
+    auto&& iter = list.insert(list.end(), order);
     order_id_map_.emplace(order_id, std::forward<Iterator>(iter));
     clord_id_map_.emplace(clord_id_key, order_id);
     ++size_;
 
-    return {true, *(*iter)};
+    // return {true, (*iter)};
+    return {true, order};
   }
 
   /**
@@ -88,29 +92,29 @@ class MapListContainer {
     if (order_id_map_iter != order_id_map_.end()) {
       auto& list = price_level_map_[modify_request.GetOrderPrice()];
       auto& iter = order_id_map_iter->second;
-      auto order = *iter;
+      auto& order = *iter;
 
       // Ensure previous clord_id matches current clord_id, and that the
       // new order quantity is greater-than-or-equals the current executed
       // quantity.
-      if (order->GetSessionId() == modify_request.GetSessionId() &&
-          order->GetClientOrderId() == modify_request.GetOrigClientOrderId() &&
-          order->GetExecutedQuantity() <= modify_request.GetOrderQuantity()) {
+      if (order.GetSessionId() == modify_request.GetSessionId() &&
+          order.GetClientOrderId() == modify_request.GetOrigClientOrderId() &&
+          order.GetExecutedQuantity() <= modify_request.GetOrderQuantity()) {
         // Update the clord_id values in the order and our client order id set
         UpdateClientOrderId(modify_request, order);
 
         // Identify what has changed
         const bool prc_changed =
-            order->GetOrderPrice() != modify_request.GetOrderPrice();
+            order.GetOrderPrice() != modify_request.GetOrderPrice();
         const bool qty_changed =
-            order->GetOrderQuantity() != modify_request.GetOrderQuantity();
+            order.GetOrderQuantity() != modify_request.GetOrderQuantity();
 
         if (prc_changed) {
           // Change in price requires remove + update + add
           RemoveDirect(order);
 
           // Modify the order details
-          order->SetOrderQuantity(modify_request.GetOrderQuantity())
+          order.SetOrderQuantity(modify_request.GetOrderQuantity())
               .SetOrderPrice(modify_request.GetOrderPrice())
               .UpdateOrderStatus()
               .Mark();
@@ -119,14 +123,14 @@ class MapListContainer {
           AddDirect(order);
 
         } else if (qty_changed) {
-          if (order->GetOrderQuantity() > modify_request.GetOrderQuantity()) {
+          if (order.GetOrderQuantity() > modify_request.GetOrderQuantity()) {
             // Decrease of order quantity maintains queue spot priority
-            order->SetOrderQuantity(modify_request.GetOrderQuantity())
+            order.SetOrderQuantity(modify_request.GetOrderQuantity())
                 .UpdateOrderStatus()
                 .Mark();
           } else {
             // Update the order quantity, and move it to the end of the queue
-            order->SetOrderQuantity(modify_request.GetOrderQuantity())
+            order.SetOrderQuantity(modify_request.GetOrderQuantity())
                 .UpdateOrderStatus()
                 .Mark();
 
@@ -135,18 +139,18 @@ class MapListContainer {
         } else {
           // Currently a NOP, will revisit when we have a strategy for
           // additional fields other than price / quantity.
-          order->Mark();
+          order.Mark();
         }
 
-        return {true, *order};
+        return {true, order};
       }
 
       spdlog::warn(
           "MapListContainer::Modify business match reject order[ order_id {} ] "
           "-> [ sess: {}, clord_id: {}, orig_clord_id: {}], modify_request[ "
           "order_id {} ] -> [ sess: {}, clord_id: {}, orig_clord_id: {} ]",
-          order->GetOrderId(), order->GetSessionId(), order->GetClientOrderId(),
-          order->GetOrigClientOrderId(), modify_request.GetOrderId(),
+          order.GetOrderId(), order.GetSessionId(), order.GetClientOrderId(),
+          order.GetOrigClientOrderId(), modify_request.GetOrderId(),
           modify_request.GetSessionId(), modify_request.GetClientOrderId(),
           modify_request.GetOrigClientOrderId());
 
@@ -203,7 +207,10 @@ class MapListContainer {
         price_level_map_.erase(cancel_request.GetOrderPrice());
       }
 
-      return {true, *order};
+      // Put the order back into the object pool
+      order.Release();
+
+      return {true, order};
     }
 
     spdlog::warn(
@@ -228,13 +235,15 @@ class MapListContainer {
    * Returns the first order in the list that is mapped to the first
    * key in the price_level_map.
    */
-  auto Front() -> Order& { return *(price_level_map_.begin()->second.front()); }
+  auto Front() -> Order& { return price_level_map_.begin()->second.front(); }
 
   auto IsEmpty() -> bool { return size_ == 0; }
   auto Count() const -> std::size_t { return size_; }
   auto Clear() -> void {
     for (auto&& [key, list] : price_level_map_) {
-      list.clear();
+      for (auto&& order : list) {
+        order.Release();
+      }
     }
 
     price_level_map_.clear();
@@ -265,9 +274,9 @@ class MapListContainer {
    * order single values.
    */
   static auto MakeOrder(const NewOrderSingle& new_order_single,
-                        const OrderId& order_id) -> OrderPtr {
-    auto ord = pool.MakeIntrusive();
-    ord->SetOrderId(order_id)
+                        const OrderId& order_id) -> Order& {
+    auto& ordr = pool.Take();
+    ordr.SetOrderId(order_id)
         .SetRoutingId(new_order_single.GetRoutingId())
         .SetSessionId(new_order_single.GetSessionId())
         .SetAccountId(new_order_single.GetAccountId())
@@ -286,7 +295,7 @@ class MapListContainer {
         .SetExecutedValue(0)
         .Mark();
 
-    return ord;
+    return ordr;
   }
 
   /**
@@ -294,7 +303,7 @@ class MapListContainer {
    * structures to reflect the new client order state.
    */
   auto UpdateClientOrderId(const OrderCancelReplaceRequest& modify_request,
-                           OrderPtr& order) -> void {
+                           Order& order) -> void {
     // Erase the old key
     clord_id_map_.erase(
         {modify_request.GetSessionId(), modify_request.GetOrigClientOrderId()});
@@ -305,32 +314,32 @@ class MapListContainer {
     clord_id_map_.emplace(new_key, modify_request.GetSessionId());
 
     // Update the order
-    order->SetClientOrderId(modify_request.GetClientOrderId())
+    order.SetClientOrderId(modify_request.GetClientOrderId())
         .SetOrigClientOrderId(modify_request.GetOrigClientOrderId());
   }
 
   /**
    * Adds the order into the order book w/o checking for valid state.
    */
-  auto AddDirect(const OrderPtr& order) -> void {
-    auto& list = price_level_map_[order->GetOrderPrice()];
-    auto&& iter = list.insert(list.end(), std::move(order));
-    order_id_map_.emplace(order->GetOrderId(), std::forward<Iterator>(iter));
+  auto AddDirect(Order& order) -> void {
+    auto& list = price_level_map_[order.GetOrderPrice()];
+    auto&& iter = list.insert(list.end(), order);
+    order_id_map_.emplace(order.GetOrderId(), std::forward<Iterator>(iter));
   }
 
   /**
    * Removes the order from the order book w/o checking for valid state.
    */
-  auto RemoveDirect(const OrderPtr& order) -> void {
-    const auto& order_id_map_iter = order_id_map_.find(order->GetOrderId());
-    auto& list = price_level_map_[order->GetOrderPrice()];
+  auto RemoveDirect(const Order& order) -> void {
+    const auto& order_id_map_iter = order_id_map_.find(order.GetOrderId());
+    auto& list = price_level_map_[order.GetOrderPrice()];
 
     list.erase(order_id_map_iter->second);
     order_id_map_.erase(order_id_map_iter);
     --size_;
 
     if (list.empty()) {
-      price_level_map_.erase(order->GetOrderPrice());
+      price_level_map_.erase(order.GetOrderPrice());
     }
   }
 
