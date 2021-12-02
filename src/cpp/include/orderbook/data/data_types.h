@@ -84,8 +84,8 @@ using AccountId = std::uint32_t;
 using OrderId = std::uint32_t;
 using QuoteId = std::uint32_t;
 using RoutingId = std::uint32_t;
-using ClientOrderId = std::string_view;
-using OrigClientOrderId = std::string_view;
+using ClientOrderId = std::string;
+using OrigClientOrderId = std::string;
 using SessionId = std::uint32_t;
 using InstrumentId = std::uint64_t;
 using TransactionId = std::uint64_t;
@@ -271,7 +271,7 @@ class BaseData {
 
   auto GetClientOrderId() -> ClientOrderId { return client_order_id_; }
   auto& GetClientOrderId() const { return client_order_id_; }
-  auto SetClientOrderId(const ClientOrderId client_order_id) -> BaseData& {
+  auto SetClientOrderId(const ClientOrderId& client_order_id) -> BaseData& {
     client_order_id_ = client_order_id;
     return *this;
   }
@@ -280,7 +280,7 @@ class BaseData {
     return orig_client_order_id_;
   }
   auto& GetOrigClientOrderId() const { return orig_client_order_id_; }
-  auto SetOrigClientOrderId(const OrigClientOrderId orig_client_order_id)
+  auto SetOrigClientOrderId(const OrigClientOrderId& orig_client_order_id)
       -> BaseData& {
     orig_client_order_id_ = orig_client_order_id;
     return *this;
@@ -306,7 +306,9 @@ class BaseData {
   BaseData(const TransactionId& tx_id)
       : transaction_id_(tx_id),
         create_tm_(TimeUtil::EpochNanos()),
-        last_modify_tm_(TimeUtil::EpochNanos()) {}
+        last_modify_tm_(TimeUtil::EpochNanos()),
+        client_order_id_{},
+        orig_client_order_id_{} {}
 
   BaseData(const TransactionId& tx_id, const RoutingId& routing_id,
            const Side& side, const OrderStatus& order_status,

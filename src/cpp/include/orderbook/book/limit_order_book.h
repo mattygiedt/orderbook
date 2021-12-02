@@ -198,6 +198,8 @@ class LimitOrderBook {
         .SetLastQuantity(0)
         .SetExecutedValue(0)
         .Mark();
+    spdlog::info("MakeOrder order_id {} -> clord_id {}", ord->GetOrderId(),
+                 ord->GetClientOrderId());
     return ord;
   }
 

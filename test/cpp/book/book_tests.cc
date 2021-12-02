@@ -20,21 +20,12 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
 
   static constexpr auto kClientOrderIdSize = 8;
 
-  // https://stackoverflow.com/questions/440133/how-do-i-create-a-random-alpha-numeric-string-in-c
-  static auto RandomStringView(const std::size_t length) -> std::string_view {
-    auto rand_char = []() -> char {
-      const char charset[] =  // NOLINT
-          "0123456789"
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-          "abcdefghijklmnopqrstuvwxyz";
-      const std::size_t max_index = (sizeof(charset) - 1);
-      return charset[rand() % max_index];
-    };
-
-    std::string rand_str(length, 0);
-    std::generate_n(rand_str.begin(), length, rand_char);
-    std::string_view str_view = rand_str;
-    return str_view;
+  static auto MakeClientOrderId(const std::size_t& length) -> std::string {
+    static std::size_t clord_id{0};
+    const auto& id = std::to_string(++clord_id);
+    auto clord_id_str =
+        std::string(length - std::min(length, id.length()), '0') + id;
+    return clord_id_str;
   }
 
   static auto MakeNewOrderSingle(const Price& price, const Quantity& quantity,
@@ -44,7 +35,7 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     nos.SetSessionId(0);
     nos.SetAccountId(0);
     nos.SetInstrumentId(1);
-    nos.SetClientOrderId(RandomStringView(kClientOrderIdSize));
+    nos.SetClientOrderId(MakeClientOrderId(kClientOrderIdSize));
     nos.SetOrderType(OrderTypeCode::kLimit);
     nos.SetTimeInForce(TimeInForceCode::kDay);
     nos.SetOrderPrice(price);
@@ -53,7 +44,7 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     return nos;
   }
 
-  static auto MakeCancel(const NewOrderSingle& order, const OrderId id)
+  static auto MakeCancel(const NewOrderSingle& order, const OrderId& id)
       -> OrderCancelRequest {
     OrderCancelRequest request;
     request.SetOrderId(id);
@@ -61,6 +52,19 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     request.SetOrderPrice(order.GetOrderPrice());
     request.SetOrderQuantity(order.GetOrderQuantity());
     request.SetClientOrderId(order.GetClientOrderId());
+    return request;
+  }
+
+  static auto MakeModify(const ExecutionReport& order, const Price& price,
+                         const Quantity& quantity)
+      -> OrderCancelReplaceRequest {
+    OrderCancelReplaceRequest request;
+    request.SetOrderId(order.GetOrderId());
+    request.SetSide(order.GetSide());
+    request.SetOrderPrice(price);
+    request.SetOrderQuantity(quantity);
+    request.SetOrigClientOrderId(order.GetClientOrderId());
+    request.SetClientOrderId(MakeClientOrderId(kClientOrderIdSize));
     return request;
   }
 
@@ -98,6 +102,107 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
     ASSERT_TRUE(pending_new_happened == 4);  // NOLINT
     ASSERT_TRUE(new_happened == 4);          // NOLINT
     ASSERT_TRUE(reject_happened == 0);       // NOLINT
+  }
+
+  static auto ModifyTest(const SideCode& side) -> void {
+    EventDispatcherPtr dispatcher = std::make_shared<EventDispatcher>();
+    OrderBook book{dispatcher};
+    ExecutionReport order_ack;
+    NewOrderSingle new_order_request;
+    OrderCancelReplaceRequest modify_request;
+
+    std::size_t pending_new_happened{0};
+    std::size_t new_happened{0};
+    std::size_t modify_happened{0};
+    std::size_t cancel_reject_happened{0};
+
+    Price last_price{0};
+    Quantity last_quantity{0};
+
+    dispatcher->appendListener(
+        EventType::kOrderPendingNew,
+        [&](const EventData& /*unused*/) { ++pending_new_happened; });
+
+    dispatcher->appendListener(EventType::kOrderNew,
+                               [&](const EventData& data) {
+                                 ++new_happened;
+                                 order_ack = std::get<ExecutionReport>(data);
+                               });
+
+    dispatcher->appendListener(
+        EventType::kOrderModified, [&](const EventData& data) {
+          order_ack = std::get<ExecutionReport>(data);
+          ++modify_happened;
+          last_price = order_ack.GetOrderPrice();
+          last_quantity = order_ack.GetOrderQuantity();
+          auto clord_id = std::string(order_ack.GetClientOrderId());
+          auto orig_clord_id = std::string(order_ack.GetClientOrderId());
+
+          spdlog::info(
+              "kOrderModified: order_id {}, clord_id {}, orig_clord_id {}, prc "
+              "{}, qty {}",
+              order_ack.GetOrderId(), clord_id, orig_clord_id, last_price,
+              last_quantity);
+        });
+
+    dispatcher->appendListener(
+        EventType::kOrderCancelRejected,
+        [&](const EventData& /*unused*/) { ++cancel_reject_happened; });
+
+    new_order_request = MakeNewOrderSingle(21, 10, side);  // NOLINT
+    spdlog::info("NewOrderSingle clord_id {} '{}'",
+                 new_order_request.GetClientOrderId().size(),
+                 new_order_request.GetClientOrderId());
+    book.Add(new_order_request);
+
+    // Change price
+    modify_request = MakeModify(order_ack, 22, 10);  // NOLINT
+    book.Modify(modify_request);
+    ASSERT_TRUE(cancel_reject_happened == 0);  // NOLINT
+    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(new_happened == 1);            // NOLINT
+    ASSERT_TRUE(modify_happened == 1);         // NOLINT
+    ASSERT_TRUE(last_price == 22);             // NOLINT
+    ASSERT_TRUE(last_quantity == 10);          // NOLINT
+
+    // Quantity up
+    modify_request = MakeModify(order_ack, 22, 11);  // NOLINT
+    book.Modify(modify_request);
+    ASSERT_TRUE(cancel_reject_happened == 0);  // NOLINT
+    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(new_happened == 1);            // NOLINT
+    ASSERT_TRUE(modify_happened == 2);         // NOLINT
+    ASSERT_TRUE(last_price == 22);             // NOLINT
+    ASSERT_TRUE(last_quantity == 11);          // NOLINT
+
+    // Quantity down
+    modify_request = MakeModify(order_ack, 22, 9);  // NOLINT
+    book.Modify(modify_request);
+    ASSERT_TRUE(cancel_reject_happened == 0);  // NOLINT
+    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(new_happened == 1);            // NOLINT
+    ASSERT_TRUE(modify_happened == 3);         // NOLINT
+    ASSERT_TRUE(last_price == 22);             // NOLINT
+    ASSERT_TRUE(last_quantity == 9);           // NOLINT
+
+    // Change price and quantity
+    modify_request = MakeModify(order_ack, 10, 10);  // NOLINT
+    book.Modify(modify_request);
+    ASSERT_TRUE(cancel_reject_happened == 0);  // NOLINT
+    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(new_happened == 1);            // NOLINT
+    ASSERT_TRUE(modify_happened == 4);         // NOLINT
+    ASSERT_TRUE(last_price == 10);             // NOLINT
+    ASSERT_TRUE(last_quantity == 10);          // NOLINT
+
+    // Try to modify an 'old' order
+    book.Modify(modify_request);
+    ASSERT_TRUE(cancel_reject_happened == 1);  // NOLINT
+    ASSERT_TRUE(pending_new_happened == 1);    // NOLINT
+    ASSERT_TRUE(new_happened == 1);            // NOLINT
+    ASSERT_TRUE(modify_happened == 4);         // NOLINT
+    ASSERT_TRUE(last_price == 10);             // NOLINT
+    ASSERT_TRUE(last_quantity == 10);          // NOLINT
   }
 
   static auto SimpleExecuteTest() -> void {
@@ -266,6 +371,13 @@ using MapListOrderBookFixture =
     OrderBookFixture<orderbook::MapListOrderBookTraits>;
 
 TEST_F(MapListOrderBookFixture, add_test) { AddTest(); }  // NOLINT
+
+TEST_F(MapListOrderBookFixture, modify_buy_test) {  // NOLINT
+  ModifyTest(SideCode::kBuy);
+}
+TEST_F(MapListOrderBookFixture, modify_sell_test) {  // NOLINT
+  ModifyTest(SideCode::kSell);
+}
 
 TEST_F(MapListOrderBookFixture, simple_execute_test) {  // NOLINT
   SimpleExecuteTest();

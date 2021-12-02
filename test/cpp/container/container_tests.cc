@@ -25,21 +25,12 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
   inline static Pool& pool = Pool::Instance();
   static constexpr auto kClientOrderIdSize = 8;
 
-  // https://stackoverflow.com/questions/440133/how-do-i-create-a-random-alpha-numeric-string-in-c
-  static auto RandomStringView(const std::size_t length) -> std::string_view {
-    auto rand_char = []() -> char {
-      const char charset[] =  // NOLINT
-          "0123456789"
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-          "abcdefghijklmnopqrstuvwxyz";
-      const std::size_t max_index = (sizeof(charset) - 1);
-      return charset[rand() % max_index];
-    };
-
-    std::string rand_str(length, 0);
-    std::generate_n(rand_str.begin(), length, rand_char);
-    std::string_view str_view = rand_str;
-    return str_view;
+  static auto MakeClientOrderId(const std::size_t& length) -> std::string {
+    static std::size_t clord_id{0};
+    const auto& id = std::to_string(++clord_id);
+    auto clord_id_str =
+        std::string(length - std::min(length, id.length()), '0') + id;
+    return clord_id_str;
   }
 
   static auto MakeOrder(const NewOrderSingle& new_order_single) -> OrderPtr {
@@ -71,7 +62,7 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
     nos.SetSessionId(0);
     nos.SetAccountId(0);
     nos.SetInstrumentId(1);
-    nos.SetClientOrderId(RandomStringView(kClientOrderIdSize));
+    nos.SetClientOrderId(MakeClientOrderId(kClientOrderIdSize));
     nos.SetOrderType(OrderTypeCode::kLimit);
     nos.SetTimeInForce(TimeInForceCode::kDay);
     nos.SetOrderPrice(price);
@@ -98,8 +89,8 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
     request.SetSide(order->GetSide());
     request.SetOrderPrice(price);
     request.SetOrderQuantity(quantity);
-    request.SetClientOrderId(RandomStringView(kClientOrderIdSize));
     request.SetOrigClientOrderId(order->GetClientOrderId());
+    request.SetClientOrderId(MakeClientOrderId(kClientOrderIdSize));
     return request;
   }
 

@@ -22,7 +22,7 @@ struct NewOrderSingle : BaseData {
     SetAccountId(table->account_id());
     SetSessionId(table->session_id());
     SetInstrumentId(table->instrument_id());
-    SetClientOrderId(table->client_order_id()->string_view());
+    SetClientOrderId(table->client_order_id()->str());
   }
 
   auto SerializeTo(flatbuffers::FlatBufferBuilder& builder) const

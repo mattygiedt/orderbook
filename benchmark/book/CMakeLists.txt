@@ -19,7 +19,7 @@ if(ENABLE_BENCHMARKS)
 
     target_include_directories( book_benchmark
                                 PRIVATE
-                                /workspaces/orderbook/src/cpp/include )
+                                ${CMAKE_SOURCE_DIR}/src/cpp/include )
 
     target_link_libraries( book_benchmark
                            PRIVATE

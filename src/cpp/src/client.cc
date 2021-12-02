@@ -7,20 +7,14 @@
 using namespace orderbook::data;
 using namespace orderbook::util;
 
-auto RandomStringView(const std::size_t length) -> std::string_view {
-  auto rand_char = []() -> char {
-    const char charset[] =  // NOLINT
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-    const size_t max_index = (sizeof(charset) - 1);
-    return charset[rand() % max_index];
-  };
+static constexpr auto kClientOrderIdSize = 8;
 
-  std::string rand_str(length, 0);
-  std::generate_n(rand_str.begin(), length, rand_char);
-  std::string_view str_view = rand_str;
-  return str_view;
+static auto MakeClientOrderId(const std::size_t& length) -> std::string {
+  static std::size_t clord_id{0};
+  const auto& id = std::to_string(++clord_id);
+  auto clord_id_str =
+      std::string(length - std::min(length, id.length()), '0') + id;
+  return clord_id_str;
 }
 
 auto main(int argc, char** argv) -> int {
@@ -139,8 +133,8 @@ auto main(int argc, char** argv) -> int {
   using ClientSocket = orderbook::util::ClientSocketProvider;
   ClientSocket socket;
 
-  auto send_new_order = [&](const Price prc, const Quantity qty,
-                            const Side side, const ClientOrderId cl_ord_id) {
+  auto send_new_order = [&](const Price& prc, const Quantity& qty,
+                            const Side& side, const ClientOrderId& cl_ord_id) {
     NewOrderSingle order;
     order.SetOrderPrice(prc)
         .SetOrderQuantity(qty)
@@ -203,9 +197,9 @@ auto main(int argc, char** argv) -> int {
     };
   */
 
-  auto send_cancel_order = [&](const Price prc, const Quantity qty,
-                               const Side side, const ClientOrderId cl_ord_id,
-                               const OrderId id) {
+  auto send_cancel_order = [&](const Price& prc, const Quantity& qty,
+                               const Side& side, const ClientOrderId& cl_ord_id,
+                               const OrderId& id) {
     OrderCancelRequest cancel;
     cancel.SetOrderId(id)
         .SetOrderPrice(prc)
@@ -213,7 +207,7 @@ auto main(int argc, char** argv) -> int {
         .SetSide(side)
         .SetInstrumentId(1)
         .SetOrigClientOrderId(cl_ord_id)
-        .SetClientOrderId(RandomStringView(8))  // NOLINT
+        .SetClientOrderId(MakeClientOrderId(kClientOrderIdSize))
         .SetOrderType(OrderType::kLimit)
         .SetTimeInForce(TimeInForce::kDay)
         .SetOrderStatus(OrderStatus::kPendingCancel);
@@ -236,7 +230,7 @@ auto main(int argc, char** argv) -> int {
   socket.Monitor(connected_event, ZMQ_EVENT_CONNECTED);
   socket.Connect(addr);
 
-  auto clord_id = RandomStringView(8);  // NOLINT
+  const auto& clord_id = MakeClientOrderId(kClientOrderIdSize);
 
   // send_new_order(20, 15, Side::kBuy, clord_id);        // NOLINT
   // send_cancel_order(20, 15, Side::kBuy, clord_id, 1);  // NOLINT
@@ -244,9 +238,10 @@ auto main(int argc, char** argv) -> int {
   // send_modify_order(20, 15, Side::kBuy, 1);  // NOLINT
   // send_cancel_order(20, 15, Side::kBuy, 1);  // NOLINT
 
-  send_new_order(20, 15, Side::kBuy, clord_id);              // NOLINT
-  send_new_order(20, 15, Side::kSell, RandomStringView(8));  // NOLINT
-  send_cancel_order(20, 15, Side::kBuy, clord_id, 1);        // NOLINT
+  send_new_order(20, 15, Side::kBuy, clord_id);  // NOLINT
+  send_new_order(20, 15, Side::kSell,            // NOLINT
+                 MakeClientOrderId(kClientOrderIdSize));
+  send_cancel_order(20, 15, Side::kBuy, clord_id, 1);  // NOLINT
 
   socket.ProcessMessages(message_handler);
 

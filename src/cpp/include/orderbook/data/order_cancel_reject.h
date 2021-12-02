@@ -27,8 +27,8 @@ struct OrderCancelReject : public BaseData {
     SetOrderStatus(static_cast<OrderStatusCode>(table->order_status()));
     cxl_rej_response_to_ =
         static_cast<CxlRejResponseToCode>(table->cxl_rej_response_to());
-    SetClientOrderId(table->client_order_id()->string_view());
-    SetOrigClientOrderId(table->orig_client_order_id()->string_view());
+    SetClientOrderId(table->client_order_id()->str());
+    SetOrigClientOrderId(table->orig_client_order_id()->str());
   }
 
   template <typename CancelRequest>

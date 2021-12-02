@@ -96,6 +96,14 @@ class OrderBook {  // clang-format on
         });
 
     dispatcher_->appendListener(
+        EventType::kOrderModified, [&](const EventData& data) {
+          spdlog::info("EventType::kOrderModified");
+
+          HandleExecutionReport(std::get<ExecutionReport>(data),
+                                EventType::kOrderModified);
+        });
+
+    dispatcher_->appendListener(
         EventType::kOrderCancelRejected, [&](const EventData& data) {
           spdlog::info("EventType::kOrderCancelRejected");
 

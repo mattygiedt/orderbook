@@ -15,6 +15,8 @@
 
 namespace orderbook::data {
 struct ExecutionReport : BaseData {
+  ExecutionReport() : BaseData() {}
+
   template <typename Order>
   ExecutionReport(const TransactionId& tx_id, const ExecutionId& exec_id,
                   const Order& order)
@@ -48,8 +50,8 @@ struct ExecutionReport : BaseData {
     SetQuoteId(table->quote_id());
     SetSessionId(table->session_id());
     SetInstrumentId(table->instrument_id());
-    SetClientOrderId(table->client_order_id()->string_view());
-    SetOrigClientOrderId(table->orig_client_order_id()->string_view());
+    SetClientOrderId(table->client_order_id()->str());
+    SetOrigClientOrderId(table->orig_client_order_id()->str());
   }
 
   auto SerializeTo(flatbuffers::FlatBufferBuilder& builder) const

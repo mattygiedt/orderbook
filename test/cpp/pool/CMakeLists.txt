@@ -21,7 +21,7 @@ if(ENABLE_UNIT_TESTS)
 
     target_include_directories( pool_tests
                                 PRIVATE
-                                /workspaces/orderbook/src/cpp/include )
+                                ${CMAKE_SOURCE_DIR}/src/cpp/include )
 
     target_link_libraries( pool_tests
                            PRIVATE

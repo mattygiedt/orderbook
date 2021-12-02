@@ -30,20 +30,12 @@ using MapListAskContainer =
 OrderId order_id{0};
 IntrusiveOrderPool& intrusive_pool = IntrusiveOrderPool::Instance();
 
-auto RandomStringView(const std::size_t length) -> std::string_view {
-  auto rand_char = []() -> char {
-    const char charset[] =  // NOLINT
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-    const std::size_t max_index = (sizeof(charset) - 1);
-    return charset[rand() % max_index];
-  };
-
-  std::string rand_str(length, 0);
-  std::generate_n(rand_str.begin(), length, rand_char);
-  std::string_view str_view = rand_str;
-  return str_view;
+auto MakeClientOrderId(const std::size_t& length) -> std::string {
+  static std::size_t clord_id{0};
+  const auto& id = std::to_string(++clord_id);
+  auto clord_id_str =
+      std::string(length - std::min(length, id.length()), '0') + id;
+  return clord_id_str;
 }
 
 auto NextRandom(const int max, const int min) -> int {
@@ -62,7 +54,7 @@ auto MakeNewOrderSingle() -> NewOrderSingle {
       .SetSessionId(0)
       .SetAccountId(0)
       .SetInstrumentId(1)
-      .SetClientOrderId(RandomStringView(kClientOrderIdSize))
+      .SetClientOrderId(MakeClientOrderId(kClientOrderIdSize))
       .SetOrderType(OrderTypeCode::kLimit)
       .SetTimeInForce(TimeInForceCode::kDay)
       .SetOrderPrice(NextRandom(kMaxPrc, kMinPrc))
