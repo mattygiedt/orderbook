@@ -40,7 +40,7 @@ That's basically what you'll find here, written in my best attempt at modern C++
 ### Benchmarking
 ```
 root@345a55e505f8:/workspaces/orderbook/build/benchmark/container# ./container_benchmark
-2021-12-02T19:31:39+00:00
+2021-12-02T20:35:57+00:00
 Running ./container_benchmark
 Run on (6 X 2999.99 MHz CPU s)
 CPU Caches:
@@ -48,14 +48,14 @@ CPU Caches:
   L1 Instruction 32 KiB (x6)
   L2 Unified 256 KiB (x6)
   L3 Unified 9216 KiB (x1)
-Load Average: 0.87, 0.66, 0.45
+Load Average: 0.54, 0.82, 0.61
 ------------------------------------------------------------------------------------------------------
 Benchmark                                                            Time             CPU   Iterations
 ------------------------------------------------------------------------------------------------------
-BM_AddOrder<typename MapListTraits::BidContainerType>             5044 ns         5044 ns       126367
-BM_AddOrder<typename MapListTraits::AskContainerType>             5137 ns         5137 ns       135224
-BM_AddOrder<typename IntrusiveListTraits::BidContainerType>       4613 ns         4613 ns       151283
-BM_AddOrder<typename IntrusiveListTraits::AskContainerType>       4476 ns         4476 ns       154313
+BM_AddOrder<typename MapListTraits::BidContainerType>             4643 ns         4642 ns       150282
+BM_AddOrder<typename MapListTraits::AskContainerType>             4924 ns         4924 ns       147072
+BM_AddOrder<typename IntrusiveListTraits::BidContainerType>       4197 ns         4197 ns       167427
+BM_AddOrder<typename IntrusiveListTraits::AskContainerType>       4185 ns         4184 ns       162740
 ```
 
 ### TODO

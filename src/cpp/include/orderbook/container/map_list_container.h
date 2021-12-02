@@ -19,7 +19,7 @@ class MapListContainer {
   using ClientOrderId = orderbook::data::ClientOrderId;
   using OrderStatus = orderbook::data::OrderStatus;
   using OrderPtr = boost::intrusive_ptr<Order>;
-  using ReturnPair = std::pair<bool, Order>;
+  using ReturnPair = std::pair<bool, Order&>;
   using List = std::list<OrderPtr>;
   using Iterator = typename List::iterator;
   using PriceLevelMap = std::map<Key, List, Compare>;
@@ -32,7 +32,8 @@ class MapListContainer {
   using OrderCancelReplaceRequest = orderbook::data::OrderCancelReplaceRequest;
 
   inline static Pool& pool = Pool::Instance();
-  inline static ReturnPair kFalsePair = {false, Order{}};
+  inline static Order invalid{};
+  inline static ReturnPair kFalsePair = {false, std::ref(invalid)};
 
  public:
   static constexpr std::size_t GetPoolSize() { return Pool::kPoolSize; }

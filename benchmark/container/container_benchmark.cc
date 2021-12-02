@@ -62,7 +62,8 @@ static void BM_AddOrder(benchmark::State& state) {
 
   for (auto _ : state) {
     for (auto&& new_order : vec) {
-      if (!container.Add(new_order, ++order_id).first) {
+      auto&& [added, order] = container.Add(new_order, ++order_id);
+      if (!added) {
         spdlog::error("container.Add(order): returned false");
       }
     }

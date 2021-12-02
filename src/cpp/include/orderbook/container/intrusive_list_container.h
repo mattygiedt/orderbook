@@ -18,7 +18,7 @@ class IntrusiveListContainer {
   using SessionId = orderbook::data::SessionId;
   using ClientOrderId = orderbook::data::ClientOrderId;
   using OrderStatus = orderbook::data::OrderStatus;
-  using ReturnPair = std::pair<bool, Order>;
+  using ReturnPair = std::pair<bool, Order&>;
   using List = boost::intrusive::list<Order>;
   using Iterator = typename List::iterator;
   using PriceLevelMap = std::map<Key, List, Compare>;
@@ -31,7 +31,8 @@ class IntrusiveListContainer {
   using OrderCancelReplaceRequest = orderbook::data::OrderCancelReplaceRequest;
 
   inline static Pool& pool = Pool::Instance();
-  inline static ReturnPair kFalsePair = {false, Order{}};
+  inline static Order invalid{};
+  inline static ReturnPair kFalsePair = {false, std::ref(invalid)};
 
  public:
   static constexpr std::size_t GetPoolSize() { return Pool::kPoolSize; }
@@ -74,7 +75,6 @@ class IntrusiveListContainer {
     clord_id_map_.emplace(clord_id_key, order_id);
     ++size_;
 
-    // return {true, (*iter)};
     return {true, order};
   }
 
