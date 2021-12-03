@@ -78,6 +78,16 @@ RUN echo "Installing cppzmq ..."; \
     make -j4 install; \
     rm -rf /cppzmq;
 
+RUN echo "Installing quickfix ..."; \
+    set -ex; \
+    git clone https://github.com/quickfix/quickfix.git; \
+    cd quickfix; \
+    mkdir build; \
+    cd build; \
+    cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=RelWithDebInfo ..; \
+    make -j4 install; \
+    rm -rf /quickfix;
+
 RUN echo "Installing flatbuffers ..."; \
     set -ex; \
     git clone https://github.com/google/flatbuffers.git; \
