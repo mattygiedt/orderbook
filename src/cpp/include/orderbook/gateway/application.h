@@ -15,7 +15,8 @@ class GatewayApplication : public FIX::Application {
   using EventDispatcherPtr = std::shared_ptr<EventDispatcher>;
 
  public:
-  GatewayApplication(EventDispatcherPtr dispatcher) : dispatcher_(dispatcher) {}
+  GatewayApplication(EventDispatcherPtr dispatcher)
+      : dispatcher_(std::move(dispatcher)) {}
 
   auto onCreate(const FIX::SessionID& session_id) -> void override {
     spdlog::info("session created: {}", session_id.toString());

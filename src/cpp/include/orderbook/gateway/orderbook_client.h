@@ -21,7 +21,8 @@ class OrderbookClient {
   constexpr static std::size_t kBufferSize = 2048;
 
  public:
-  OrderbookClient(EventDispatcherPtr dispatcher) : dispatcher_(dispatcher) {}
+  OrderbookClient(EventDispatcherPtr dispatcher)
+      : dispatcher_(std::move(dispatcher)) {}
 
   auto Connect(const std::string& addr) -> void {
     auto connected_event = [&](const zmq_event_t& event, const char* addr) {
