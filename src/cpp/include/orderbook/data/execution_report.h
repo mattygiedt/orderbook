@@ -17,9 +17,9 @@ namespace orderbook::data {
 struct ExecutionReport : BaseData {
   ExecutionReport() : BaseData() {}
 
-  template <typename Order>
+  template <typename OrderData>
   ExecutionReport(const TransactionId& tx_id, const ExecutionId& exec_id,
-                  const Order& order)
+                  const OrderData& order)
       : BaseData(tx_id, order.GetRoutingId(), order.GetSide(),
                  order.GetOrderStatus(), order.GetTimeInForce(),
                  order.GetOrderType(), ExecutionType::kNew,

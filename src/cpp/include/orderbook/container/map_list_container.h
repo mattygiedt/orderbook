@@ -37,6 +37,7 @@ class MapListContainer {
 
  public:
   static constexpr std::size_t GetPoolSize() { return Pool::kPoolSize; }
+  static std::size_t Available() { return pool.Available(); }
 
   /**
    * Add the new order single to the container.

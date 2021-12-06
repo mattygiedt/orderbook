@@ -30,6 +30,13 @@ class LimitOrderBook {
    */
   auto Add(const NewOrderSingle& add_request) -> void {
     if (add_request.IsBuyOrder()) {
+      // object pool is empty
+      if (bids_.Available() == 0) {
+        spdlog::error("bids_.Available() == 0");
+        DispatchOrderStatus(EventType::kOrderRejected, add_request);
+        return;
+      }
+
       auto&& [added, order] = bids_.Add(add_request, ++order_id);
 
       if (added) {
@@ -43,6 +50,13 @@ class LimitOrderBook {
       }
 
     } else {
+      // object pool is empty
+      if (asks_.Available() == 0) {
+        spdlog::error("asks_.Available() == 0");
+        DispatchOrderStatus(EventType::kOrderRejected, add_request);
+        return;
+      }
+
       auto&& [added, order] = asks_.Add(add_request, ++order_id);
 
       if (added) {
@@ -215,7 +229,8 @@ class LimitOrderBook {
   /**
    * Used to communicate order status back to client.
    */
-  auto DispatchOrderStatus(const EventType& event_type, const Order& order)
+  template <typename OrderData>
+  auto DispatchOrderStatus(const EventType& event_type, const OrderData& order)
       -> void {
     data_ = ExecutionReport(++tx_id_, ++exec_id_, order);
     dispatcher_->dispatch(event_type, data_);
