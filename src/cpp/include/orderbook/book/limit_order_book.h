@@ -190,8 +190,7 @@ class LimitOrderBook {
  private:
   auto ExecuteOrder(Order& order, const Price& prc, const Quantity& qty)
       -> void {
-    order.SetExecutedQuantity(order.GetExecutedQuantity() + qty)
-        .SetLeavesQuantity(order.GetLeavesQuantity() - qty)
+    order.SetLeavesQuantity(order.GetLeavesQuantity() - qty)
         .SetExecutedValue(order.GetExecutedValue() + (prc * qty))
         .SetLastPrice(prc)
         .SetLastQuantity(qty)

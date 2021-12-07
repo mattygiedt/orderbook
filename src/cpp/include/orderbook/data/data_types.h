@@ -91,6 +91,19 @@ using InstrumentId = std::uint64_t;
 using TransactionId = std::uint64_t;
 using Timestamp = orderbook::util::TimeUtil::Timestamp;
 
+namespace internal {
+inline static constexpr int kDoubleToPriceMult = 1000000;
+inline static constexpr double kPriceToDoubleMult = 1.0 / kDoubleToPriceMult;
+}  // namespace internal
+
+inline auto ToPrice(const double& prc) -> Price {
+  return std::floor(prc * internal::kDoubleToPriceMult);
+}
+
+inline auto ToDouble(const Price& prc) -> double {
+  return prc * internal::kPriceToDoubleMult;
+}
+
 class BaseData {
  private:
   using TimeUtil = orderbook::util::TimeUtil;

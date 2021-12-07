@@ -271,8 +271,7 @@ class IntrusiveListContainer {
 
  private:
   /**
-   * Generates a new intrusive_ptr from the pool and initializes it with the new
-   * order single values.
+   * Initializes an Order from the pool with the new order single values.
    */
   static auto MakeOrder(const NewOrderSingle& new_order_single,
                         const OrderId& order_id) -> Order& {

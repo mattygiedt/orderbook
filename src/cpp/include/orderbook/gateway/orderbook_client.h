@@ -9,6 +9,8 @@ namespace orderbook::gateway {
 
 class OrderbookClient {
  private:
+  using TimeUtil = orderbook::util::TimeUtil;
+  using EmptyType = orderbook::data::Empty;
   using EventType = orderbook::data::EventType;
   using EventData = orderbook::data::EventData;
   using EventCallback = orderbook::data::EventCallback;
@@ -16,13 +18,35 @@ class OrderbookClient {
   using EventDispatcherPtr = std::shared_ptr<EventDispatcher>;
   using ClientSocket = orderbook::util::ClientSocketProvider;
   using ExecutionReport = orderbook::data::ExecutionReport;
+  using NewOrderSingle = orderbook::data::NewOrderSingle;
   using OrderCancelReject = orderbook::data::OrderCancelReject;
 
   constexpr static std::size_t kBufferSize = 2048;
 
  public:
   OrderbookClient(EventDispatcherPtr dispatcher)
-      : dispatcher_(std::move(dispatcher)) {}
+      : dispatcher_(std::move(dispatcher)), data_{EmptyType()} {
+    dispatcher_->appendListener(
+        EventType::kOrderPendingNew, [&](const EventData& data) {
+          spdlog::info("OrderbookClient EventType::kOrderPendingNew");
+
+          using namespace orderbook::serialize;
+
+          auto& order = std::get<NewOrderSingle>(data);
+
+          builder.Clear();
+          builder.Finish(CreateMessage(
+              builder,
+
+              CreateHeader(builder, TimeUtil::EpochNanos(), 1,
+                           static_cast<orderbook::serialize::EventTypeCode>(
+                               EventType::kOrderPendingNew)),
+
+              Body::NewOrderSingle, order.SerializeTo(builder).Union()));
+
+          socket_.SendFlatBuffer(builder.GetBufferPointer(), builder.GetSize());
+        });
+  }
 
   auto Connect(const std::string& addr) -> void {
     auto connected_event = [&](const zmq_event_t& event, const char* addr) {
@@ -70,14 +94,8 @@ class OrderbookClient {
       spdlog::warn("received orderbook::serialize::OrderNew");
       const auto* exec_table = flatc_msg->body_as_ExecutionReport();
       auto exec_rpt = ExecutionReport(exec_table);
-
-      spdlog::info(
-          "got execution report: exec_id {}, order_id {}, ord_status {}, "
-          "side {}, ord_qty {}, ord_prc {}, leaves_qty {}",
-          exec_rpt.GetExecutionId(), exec_rpt.GetOrderId(),
-          exec_rpt.GetOrderStatus(), exec_rpt.GetSide(),
-          exec_rpt.GetOrderQuantity(), exec_rpt.GetOrderPrice(),
-          exec_rpt.GetLeavesQuantity());
+      data_ = exec_rpt;
+      dispatcher_->dispatch(EventType::kOrderNew, data_);
 
     } else if (event_type ==
                orderbook::serialize::EventTypeCode::OrderPartiallyFilled) {
@@ -148,6 +166,7 @@ class OrderbookClient {
   }
 
   EventDispatcherPtr dispatcher_;
+  EventData data_;
   ClientSocket socket_;
   std::thread recv_thread_;
   flatbuffers::FlatBufferBuilder builder{kBufferSize};

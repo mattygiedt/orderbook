@@ -4,6 +4,7 @@
 
 #include "orderbook/data/empty.h"
 #include "orderbook/data/execution_report.h"
+#include "orderbook/data/new_order_single.h"
 #include "orderbook/data/order_cancel_reject.h"
 #include "orderbook/data/reject.h"
 
@@ -25,7 +26,7 @@ enum class EventType : std::uint8_t {
 };
 
 using EventData =
-    std::variant<ExecutionReport, OrderCancelReject, Reject, Empty>;
+    std::variant<ExecutionReport, NewOrderSingle, OrderCancelReject, Reject, Empty>;
 using EventCallback = void(const EventData&);
 
 }  // namespace orderbook::data

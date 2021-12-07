@@ -43,6 +43,7 @@ struct ExecutionReport : BaseData {
     SetOrderPrice(table->order_price());
     SetOrderQuantity(table->order_quantity());
     SetLeavesQuantity(table->leaves_quantity());
+    SetExecutedQuantity(table->order_quantity() - table->leaves_quantity());
     SetExecutedValue(table->executed_value());
     SetExecutionId(table->execution_id());
     SetAccountId(table->account_id());
@@ -65,6 +66,16 @@ struct ExecutionReport : BaseData {
         GetQuoteId(), GetSessionId(), GetInstrumentId(),
         builder.CreateString(GetClientOrderId()),
         builder.CreateString(GetOrigClientOrderId()));
+  }
+
+  auto GetAveragePrice() const -> Price {
+    const auto& executed_quantity = GetExecutedQuantity();
+
+    if (executed_quantity == 0) {
+      return 0.0;
+    }
+
+    return (GetExecutedValue() / executed_quantity);
   }
 };
 }  // namespace orderbook::data
