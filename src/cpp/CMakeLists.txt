@@ -40,7 +40,7 @@ target_link_libraries( client
                        PUBLIC
                        flatbuf_serialize
                        spdlog::spdlog
-                       cppzmq
+                       quickfix
                        tcmalloc )
 
 add_executable( gateway "./src/gateway.cc" )

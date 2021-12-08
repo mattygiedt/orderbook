@@ -29,41 +29,51 @@ class GatewayApplication : public FIX::Application,
         EventType::kOrderNew, [&](const EventData& data) {
           auto& exec_rpt = std::get<ExecutionReport>(data);
 
-          spdlog::info("OrderbookClient EventType::kOrderNew");
+          spdlog::info("GatewayApplication EventType::kOrderNew");
           spdlog::info(
-              "got execution report: exec_id {}, order_id {}, ord_status {}, "
-              "side {}, ord_qty {}, ord_prc {}, leaves_qty {}",
+              " execution report: exec_id {}, order_id {}, ord_status {}, "
+              "side {}, ord_qty {}, ord_prc {}, leaves_qty {}, avg_px {}",
               exec_rpt.GetExecutionId(), exec_rpt.GetOrderId(),
               exec_rpt.GetOrderStatus(), exec_rpt.GetSide(),
               exec_rpt.GetOrderQuantity(), exec_rpt.GetOrderPrice(),
-              exec_rpt.GetLeavesQuantity());
+              exec_rpt.GetLeavesQuantity(), exec_rpt.GetAveragePrice());
 
-          FIX42::ExecutionReport executionReport = FIX42::ExecutionReport(
-              FIX::OrderID(std::to_string(exec_rpt.GetOrderId())),
-              FIX::ExecID(std::to_string(exec_rpt.GetExecutionId())),
-              FIX::ExecTransType(FIX::ExecTransType_NEW),
-              FIX::ExecType(FIX::ExecType_NEW),
-              FIX::OrdStatus(FIX::OrdStatus_NEW), FIX::Symbol("INVALID_SYMBOL"),
-              Convert(exec_rpt.GetSide()),
-              FIX::LeavesQty(exec_rpt.GetLeavesQuantity()),
-              FIX::CumQty(exec_rpt.GetOrderQuantity()),
-              FIX::AvgPx(
-                  orderbook::data::ToDouble(exec_rpt.GetAveragePrice())));
+          SendFixMessage(exec_rpt, FIX::ExecType(FIX::ExecType_NEW),
+                         FIX::OrdStatus(FIX::OrdStatus_NEW));
+        });
 
-          executionReport.set(FIX::ClOrdID(exec_rpt.GetClientOrderId()));
-          executionReport.set(FIX::OrderQty(exec_rpt.GetOrderQuantity()));
-          executionReport.set(FIX::LastShares(exec_rpt.GetLastQuantity()));
-          executionReport.set(
-              FIX::Account(std::to_string(exec_rpt.GetAccountId())));
-          executionReport.set(
-              FIX::LastPx(orderbook::data::ToDouble(exec_rpt.GetLastPrice())));
-          executionReport.set(
-              FIX::SecurityID(std::to_string(exec_rpt.GetInstrumentId())));
-          executionReport.set(FIX::IDSource(FIX::IDSource_EXCHANGE_SYMBOL));
+    dispatcher_->appendListener(
+        EventType::kOrderPartiallyFilled, [&](const EventData& data) {
+          auto& exec_rpt = std::get<ExecutionReport>(data);
 
-          const FIX::SessionID& session_id =
-              client_session_map_.at(exec_rpt.GetSessionId());
-          FIX::Session::sendToTarget(executionReport, session_id);
+          spdlog::info("GatewayApplication EventType::kOrderPartiallyFilled");
+          spdlog::info(
+              " execution report: exec_id {}, order_id {}, ord_status {}, "
+              "side {}, ord_qty {}, ord_prc {}, leaves_qty {}, avg_px {}",
+              exec_rpt.GetExecutionId(), exec_rpt.GetOrderId(),
+              exec_rpt.GetOrderStatus(), exec_rpt.GetSide(),
+              exec_rpt.GetOrderQuantity(), exec_rpt.GetOrderPrice(),
+              exec_rpt.GetLeavesQuantity(), exec_rpt.GetAveragePrice());
+
+          SendFixMessage(exec_rpt, FIX::ExecType(FIX::ExecType_PARTIAL_FILL),
+                         FIX::OrdStatus(FIX::OrdStatus_PARTIALLY_FILLED));
+        });
+
+    dispatcher_->appendListener(
+        EventType::kOrderFilled, [&](const EventData& data) {
+          auto& exec_rpt = std::get<ExecutionReport>(data);
+
+          spdlog::info("GatewayApplication EventType::kOrderFilled");
+          spdlog::info(
+              " execution report: exec_id {}, order_id {}, ord_status {}, "
+              "side {}, ord_qty {}, ord_prc {}, leaves_qty {}, avg_px {}",
+              exec_rpt.GetExecutionId(), exec_rpt.GetOrderId(),
+              exec_rpt.GetOrderStatus(), exec_rpt.GetSide(),
+              exec_rpt.GetOrderQuantity(), exec_rpt.GetOrderPrice(),
+              exec_rpt.GetLeavesQuantity(), exec_rpt.GetAveragePrice());
+
+          SendFixMessage(exec_rpt, FIX::ExecType(FIX::ExecType_FILL),
+                         FIX::OrdStatus(FIX::OrdStatus_FILLED));
         });
   }
 
@@ -190,6 +200,33 @@ class GatewayApplication : public FIX::Application,
 
     data_ = order;
     dispatcher_->dispatch(EventType::kOrderPendingNew, data_);
+  }
+
+  auto SendFixMessage(const ExecutionReport& exec_rpt,
+                      const FIX::ExecType& exec_type,
+                      const FIX::OrdStatus& ord_status) -> void {
+    FIX42::ExecutionReport executionReport = FIX42::ExecutionReport(
+        FIX::OrderID(std::to_string(exec_rpt.GetOrderId())),
+        FIX::ExecID(std::to_string(exec_rpt.GetExecutionId())),
+        FIX::ExecTransType(FIX::ExecTransType_NEW), exec_type, ord_status,
+        FIX::Symbol("AAPL"), Convert(exec_rpt.GetSide()),
+        FIX::LeavesQty(exec_rpt.GetLeavesQuantity()),
+        FIX::CumQty(exec_rpt.GetOrderQuantity()),
+        FIX::AvgPx(orderbook::data::ToDouble(exec_rpt.GetAveragePrice())));
+
+    executionReport.set(FIX::ClOrdID(exec_rpt.GetClientOrderId()));
+    executionReport.set(FIX::OrderQty(exec_rpt.GetOrderQuantity()));
+    executionReport.set(FIX::LastShares(exec_rpt.GetLastQuantity()));
+    executionReport.set(FIX::Account(std::to_string(exec_rpt.GetAccountId())));
+    executionReport.set(
+        FIX::LastPx(orderbook::data::ToDouble(exec_rpt.GetLastPrice())));
+    executionReport.set(
+        FIX::SecurityID(std::to_string(exec_rpt.GetInstrumentId())));
+    executionReport.set(FIX::IDSource(FIX::IDSource_EXCHANGE_SYMBOL));
+
+    const FIX::SessionID& session_id =
+        client_session_map_.at(exec_rpt.GetSessionId());
+    FIX::Session::sendToTarget(executionReport, session_id);
   }
 
   FixSessionIdMap fix_session_map_{};

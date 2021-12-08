@@ -38,7 +38,7 @@ class OrderbookClient {
           builder.Finish(CreateMessage(
               builder,
 
-              CreateHeader(builder, TimeUtil::EpochNanos(), 1,
+              CreateHeader(builder, TimeUtil::EpochNanos(), ++seq_no_,
                            static_cast<orderbook::serialize::EventTypeCode>(
                                EventType::kOrderPendingNew)),
 
@@ -58,13 +58,11 @@ class OrderbookClient {
   }
 
   auto ProcessMessages() -> void {
-    auto message_handler = [&](zmq::message_t&& msg) {
-      OnMessage(std::forward<zmq::message_t>(msg));
-    };
-
-    auto thread_handler = [&]() { socket_.ProcessMessages(message_handler); };
-
-    recv_thread_ = std::thread(thread_handler);
+    recv_thread_ = std::thread([&]() {
+      socket_.ProcessMessages([&](zmq::message_t&& msg) {
+        OnMessage(std::forward<zmq::message_t>(msg));
+      });
+    });
   }
 
   auto Close() -> void {
@@ -78,34 +76,9 @@ class OrderbookClient {
     auto event_type = flatc_msg->header()->event_type();
 
     if (event_type == orderbook::serialize::EventTypeCode::OrderPendingNew) {
-      spdlog::warn("received orderbook::serialize::OrderPendingNew");
+      spdlog::info("received orderbook::serialize::OrderPendingNew");
       const auto* exec_table = flatc_msg->body_as_ExecutionReport();
       auto exec_rpt = ExecutionReport(exec_table);
-
-      spdlog::info(
-          "got execution report: exec_id {}, order_id {}, ord_status {}, "
-          "side {}, ord_qty {}, ord_prc {}, leaves_qty {}",
-          exec_rpt.GetExecutionId(), exec_rpt.GetOrderId(),
-          exec_rpt.GetOrderStatus(), exec_rpt.GetSide(),
-          exec_rpt.GetOrderQuantity(), exec_rpt.GetOrderPrice(),
-          exec_rpt.GetLeavesQuantity());
-
-    } else if (event_type == orderbook::serialize::EventTypeCode::OrderNew) {
-      spdlog::warn("received orderbook::serialize::OrderNew");
-      const auto* exec_table = flatc_msg->body_as_ExecutionReport();
-      auto exec_rpt = ExecutionReport(exec_table);
-      data_ = exec_rpt;
-      dispatcher_->dispatch(EventType::kOrderNew, data_);
-
-    } else if (event_type ==
-               orderbook::serialize::EventTypeCode::OrderPartiallyFilled) {
-      spdlog::warn("received orderbook::serialize::OrderPartiallyFilled");
-      const auto* exec_table = flatc_msg->body_as_ExecutionReport();
-      auto exec_rpt = ExecutionReport(exec_table);
-
-      auto avg_px =
-          (double)exec_rpt.GetExecutedValue() /
-          (double)(exec_rpt.GetOrderQuantity() - exec_rpt.GetLeavesQuantity());
 
       spdlog::info(
           "got execution report: exec_id {}, order_id {}, ord_status {}, "
@@ -113,10 +86,34 @@ class OrderbookClient {
           exec_rpt.GetExecutionId(), exec_rpt.GetOrderId(),
           exec_rpt.GetOrderStatus(), exec_rpt.GetSide(),
           exec_rpt.GetOrderQuantity(), exec_rpt.GetOrderPrice(),
-          exec_rpt.GetLeavesQuantity(), avg_px);
+          exec_rpt.GetLeavesQuantity(), exec_rpt.GetAveragePrice());
 
+      data_ = exec_rpt;
+      dispatcher_->dispatch(EventType::kOrderPendingNew, data_);
+    } else if (event_type == orderbook::serialize::EventTypeCode::OrderNew) {
+      spdlog::info("received orderbook::serialize::OrderNew");
+      const auto* exec_table = flatc_msg->body_as_ExecutionReport();
+      auto exec_rpt = ExecutionReport(exec_table);
+      data_ = exec_rpt;
+      dispatcher_->dispatch(EventType::kOrderNew, data_);
+    } else if (event_type ==
+               orderbook::serialize::EventTypeCode::OrderPartiallyFilled) {
+      spdlog::info("received orderbook::serialize::OrderPartiallyFilled");
+      const auto* exec_table = flatc_msg->body_as_ExecutionReport();
+      auto exec_rpt = ExecutionReport(exec_table);
+
+      spdlog::info(
+          "got execution report: exec_id {}, order_id {}, ord_status {}, "
+          "side {}, ord_qty {}, ord_prc {}, leaves_qty {}, avg_px {}",
+          exec_rpt.GetExecutionId(), exec_rpt.GetOrderId(),
+          exec_rpt.GetOrderStatus(), exec_rpt.GetSide(),
+          exec_rpt.GetOrderQuantity(), exec_rpt.GetOrderPrice(),
+          exec_rpt.GetLeavesQuantity(), exec_rpt.GetAveragePrice());
+
+      data_ = exec_rpt;
+      dispatcher_->dispatch(EventType::kOrderPartiallyFilled, data_);
     } else if (event_type == orderbook::serialize::EventTypeCode::OrderFilled) {
-      spdlog::warn("received orderbook::serialize::OrderFilled");
+      spdlog::info("received orderbook::serialize::OrderFilled");
       const auto* exec_table = flatc_msg->body_as_ExecutionReport();
       auto exec_rpt = ExecutionReport(exec_table);
 
@@ -170,6 +167,7 @@ class OrderbookClient {
   ClientSocket socket_;
   std::thread recv_thread_;
   flatbuffers::FlatBufferBuilder builder{kBufferSize};
+  std::uint32_t seq_no_{0};
 };
 
 }  // namespace orderbook::gateway

@@ -1,7 +1,9 @@
 #include <iostream>
 #include <string>
 
-#include "orderbook/application_traits.h"
+#include "orderbook/data/event_types.h"
+#include "orderbook/gateway/application.h"
+#include "orderbook/gateway/orderbook_client.h"
 #include "quickfix/FileLog.h"
 #include "quickfix/FileStore.h"
 #include "quickfix/SessionSettings.h"

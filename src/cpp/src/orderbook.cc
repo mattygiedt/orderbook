@@ -125,23 +125,47 @@ class OrderBook {  // clang-format on
       const auto* flatc_msg = orderbook::serialize::GetMessage(msg.data());
       auto event_type = flatc_msg->header()->event_type();
 
+      auto is_valid_instrument = [&](auto& instrument_id) -> bool {
+        if (instrument_id > kInstrumentCount) {
+          spdlog::warn("received invalid instrument_id: {}", instrument_id);
+          return false;
+        }
+
+        return true;
+      };
+
       if (event_type == orderbook::serialize::EventTypeCode::OrderPendingNew) {
         const auto* table = flatc_msg->body_as_NewOrderSingle();
         auto order = NewOrderSingle(table);
         order.SetRoutingId(msg.routing_id());
-        book_map_.at(order.GetInstrumentId()).Add(order);
+        const auto& instrument_id = order.GetInstrumentId();
+        if (is_valid_instrument(instrument_id)) {
+          book_map_.at(instrument_id).Add(order);
+        } else {
+          // TODO: send reject
+        }
       } else if (event_type ==
                  orderbook::serialize::EventTypeCode::OrderPendingModify) {
         const auto* table = flatc_msg->body_as_OrderCancelReplaceRequest();
         auto modify = OrderCancelReplaceRequest(table);
         modify.SetRoutingId(msg.routing_id());
-        book_map_.at(modify.GetInstrumentId()).Modify(modify);
+        const auto& instrument_id = modify.GetInstrumentId();
+        if (is_valid_instrument(instrument_id)) {
+          book_map_.at(instrument_id).Modify(modify);
+        } else {
+          // TODO: send reject
+        }
       } else if (event_type ==
                  orderbook::serialize::EventTypeCode::OrderPendingCancel) {
         const auto* table = flatc_msg->body_as_OrderCancelRequest();
         auto cancel = OrderCancelRequest(table);
         cancel.SetRoutingId(msg.routing_id());
-        book_map_.at(cancel.GetInstrumentId()).Cancel(cancel);
+        const auto& instrument_id = cancel.GetInstrumentId();
+        if (is_valid_instrument(instrument_id)) {
+          book_map_.at(instrument_id).Cancel(cancel);
+        } else {
+          // TODO: send reject
+        }
       } else {
         spdlog::warn("received unknown orderbook::serialize::EventTypeCode");
         // TODO: Send Reject

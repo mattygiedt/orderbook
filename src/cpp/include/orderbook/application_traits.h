@@ -17,8 +17,6 @@
 #include "orderbook/data/event_types.h"
 #include "orderbook/data/limit_order.h"
 #include "orderbook/data/object_pool.h"
-#include "orderbook/gateway/application.h"
-#include "orderbook/gateway/orderbook_client.h"
 #include "orderbook/serialize/orderbook_generated.h"
 #include "orderbook/util/socket_providers.h"
 #include "orderbook/util/time_util.h"
