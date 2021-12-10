@@ -12,7 +12,7 @@
 namespace orderbook::container {
 
 template <typename Key, typename Order, typename Pool, typename Compare>
-class MapListContainer {
+class IntrusivePtrContainer {
  private:
   using OrderId = orderbook::data::OrderId;
   using SessionId = orderbook::data::SessionId;
@@ -48,7 +48,7 @@ class MapListContainer {
   auto Add(const NewOrderSingle& order_request, const OrderId& order_id)
       -> ReturnPair {
     // Create a new order intrusive_ptr
-    auto order = MapListContainer::MakeOrder(order_request, order_id);
+    auto order = IntrusivePtrContainer::MakeOrder(order_request, order_id);
 
     // Does our clord_id set contain the requested client_order_id key?
     const ClientOrderIdKey& clord_id_key = {order_request.GetSessionId(),
@@ -58,7 +58,7 @@ class MapListContainer {
 
     if (clord_id_map_iter != clord_id_map_.end()) {
       spdlog::warn(
-          "MapListContainer::Add duplicate clord_id '{}' for session {}, "
+          "IntrusivePtrContainer::Add duplicate clord_id '{}' for session {}, "
           "rejecting order_id: {}",
           clord_id_key.second, clord_id_key.first, order_id);
       order->SetOrderStatus(OrderStatus::kRejected);
@@ -83,7 +83,7 @@ class MapListContainer {
    * successfully modified, std::pair[false, empty_order] if not.
    */
   auto Modify(const OrderCancelReplaceRequest& modify_request) -> ReturnPair {
-    // find the order by the order_id we assigned in MapListContainer::Add
+    // find the order by the order_id we assigned in IntrusivePtrContainer::Add
     const auto& order_id_map_iter =
         order_id_map_.find(modify_request.GetOrderId());
 
@@ -144,7 +144,8 @@ class MapListContainer {
       }
 
       spdlog::warn(
-          "MapListContainer::Modify business match reject order[ order_id {} ] "
+          "IntrusivePtrContainer::Modify business match reject order[ order_id "
+          "{} ] "
           "-> [ sess: {}, clord_id: {}, orig_clord_id: {}], modify_request[ "
           "order_id {} ] -> [ sess: {}, clord_id: {}, orig_clord_id: {} ]",
           order->GetOrderId(), order->GetSessionId(), order->GetClientOrderId(),
@@ -156,7 +157,8 @@ class MapListContainer {
     }
 
     spdlog::warn(
-        "MapListContainer::Modify unknown order_id: {} for modify_request: [ "
+        "IntrusivePtrContainer::Modify unknown order_id: {} for "
+        "modify_request: [ "
         "sess: {}, clord_id: {}, orig_clord_id: {} ]",
         modify_request.GetOrderId(), modify_request.GetSessionId(),
         modify_request.GetClientOrderId(),
@@ -224,7 +226,7 @@ class MapListContainer {
     }
 
     spdlog::warn(
-        "MapListContainer::Remove unknown order for cancel_request: [ "
+        "IntrusivePtrContainer::Remove unknown order for cancel_request: [ "
         "order_id: {}, sess: {}, clord_id: {}, orig_clord_id: {} ]",
         cancel_request.GetOrderId(), cancel_request.GetSessionId(),
         cancel_request.GetClientOrderId(),
@@ -233,12 +235,39 @@ class MapListContainer {
     // We should either find or not find the cancel_request in both order maps
     if (found_order_id_map != found_clord_id_map) {
       spdlog::error(
-          "MapListContainer::Remove inconsistent order map state: "
+          "IntrusivePtrContainer::Remove inconsistent order map state: "
           "found_order_id_map {}, found_clord_id_map {}",
           found_order_id_map, found_clord_id_map);
     }
 
     return kFalsePair;
+  }
+
+  auto CancelAll(const SessionId& session_id) -> std::size_t {
+    std::size_t order_count{0};
+
+    for (auto& [key, value] : price_level_map_) {
+      for (auto it = value.begin(); it != value.end();) {
+        if ((*it)->GetSessionId() == session_id) {
+          const auto& order_id_map_iter =
+              order_id_map_.find((*it)->GetOrderId());
+          const auto& clord_id_map_iter = clord_id_map_.find(
+              {(*it)->GetSessionId(), (*it)->GetClientOrderId()});
+          order_id_map_.erase(order_id_map_iter);
+          clord_id_map_.erase(clord_id_map_iter);
+          it = value.erase(it);
+          ++order_count;
+        } else {
+          std::next(it);
+        }
+      }
+
+      if (value.empty()) {
+        price_level_map_.erase(key);
+      }
+    }
+
+    return order_count;
   }
 
   /**

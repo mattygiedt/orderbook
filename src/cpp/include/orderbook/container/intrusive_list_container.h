@@ -250,6 +250,32 @@ class IntrusiveListContainer {
     return kFalsePair;
   }
 
+  auto CancelAll(const SessionId& session_id) -> std::size_t {
+    std::size_t order_count{0};
+
+    for (auto& [key, value] : price_level_map_) {
+      for (auto it = value.begin(); it != value.end();) {
+        if (it->GetSessionId() == session_id) {
+          const auto& order_id_map_iter = order_id_map_.find(it->GetOrderId());
+          const auto& clord_id_map_iter =
+              clord_id_map_.find({it->GetSessionId(), it->GetClientOrderId()});
+          order_id_map_.erase(order_id_map_iter);
+          clord_id_map_.erase(clord_id_map_iter);
+          it = value.erase(it);
+          ++order_count;
+        } else {
+          std::next(it);
+        }
+      }
+
+      if (value.empty()) {
+        price_level_map_.erase(key);
+      }
+    }
+
+    return order_count;
+  }
+
   /**
    * Returns the first order in the list that is mapped to the first
    * key in the price_level_map.

@@ -71,7 +71,8 @@ enum EventTypeCode : uint8 {
     OrderCancelled = 8,
     OrderCompleted = 9,
     OrderCancelRejected = 10,
-    OrderModified = 11
+    OrderModified = 11,
+    CancelOnDisconnect = 12
 }
 
 table Header {

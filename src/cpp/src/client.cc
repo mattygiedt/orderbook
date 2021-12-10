@@ -60,45 +60,27 @@ class FixClient : public FIX::Application, public FIX42::MessageCracker {
                            "00000001");                                // NOLINT
     SendCancelOrderRequest(42, "AAPL", 1999, 1, FIX::Side_BUY, 1,      // NOLINT
                            "00000001");                                // NOLINT
-                                                                       //
-    //    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,  // NOLINT
-    //                        FIX::Side_BUY);                 // NOLINT
-    //    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,  // NOLINT
-    //                        FIX::Side_SELL);                // NOLINT
-    //
-    //    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,              //
-    //    NOLINT
-    //                        FIX::Side_BUY);                             //
-    //                        NOLINT
-    //    SendNewOrderRequest(123.456, 50, "AAPL", 1999, 1,               //
-    //    NOLINT
-    //                        FIX::Side_SELL);                            //
-    //                        NOLINT
-    //    SendCancelOrderRequest(100, "AAPL", 1999, 1, FIX::Side_BUY, 4,  //
-    //    NOLINT
-    //                           "00000005");                             //
-    //                           NOLINT
-    //
-    //    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,     // NOLINT
-    //                        FIX::Side_BUY);                    // NOLINT
-    //    SendModifyOrderRequest(123.456, 50, "AAPL", 1999, 1,   // NOLINT
-    //                           FIX::Side_BUY, 6, "00000008");  // NOLINT
-    //
-    /*
-SendCancelOrderRequest(const std::int32_t& quantity,
-                              const std::string& symbol,
-                              const std::uint32_t& instrument_id,
-                              const std::uint32_t& account_id,
-                              const FIX::Side& side,
-                              const std::uint32_t& order_id,
-                              const std::string& orig_clord_id)
 
-    SendNewOrderRequest(123.455, 21, "AAPL", 1999, 1,
-                        FIX::Side_SELL);  // NOLINT
-    SendNewOrderRequest(123.456, 22, "AAPL", 1999, 1,
+    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,              // NOLINT
+                        FIX::Side_BUY);                             // NOLINT
+    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,              // NOLINT
+                        FIX::Side_SELL);                            // NOLINT
+    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,              // NOLINT
+                        FIX::Side_BUY);                             // NOLINT
+    SendNewOrderRequest(123.456, 50, "AAPL", 1999, 1,               // NOLINT
+                        FIX::Side_SELL);                            // NOLINT
+    SendCancelOrderRequest(100, "AAPL", 1999, 1, FIX::Side_BUY, 4,  // NOLINT
+                           "00000005");                             // NOLINT
+    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,              // NOLINT
+                        FIX::Side_BUY);                             // NOLINT
+    SendModifyOrderRequest(123.456, 50, "AAPL", 1999, 1,            // NOLINT
+                           FIX::Side_BUY, 6, "00000008");           // NOLINT
+
+    SendNewOrderRequest(123.455, 21, "AAPL", 1999, 1,                // NOLINT
+                        FIX::Side_SELL);                             // NOLINT
+    SendNewOrderRequest(123.456, 22, "AAPL", 1999, 1,                // NOLINT
                         FIX::Side_SELL);                             // NOLINT
     SendNewOrderRequest(123.46, 1, "AAPL", 1999, 1, FIX::Side_BUY);  // NOLINT
-    */
   }
 
   auto onLogout(const FIX::SessionID& session_id) -> void override {

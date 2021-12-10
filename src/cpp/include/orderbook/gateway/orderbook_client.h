@@ -95,6 +95,27 @@ class OrderbookClient {
 
           socket_.SendFlatBuffer(builder.GetBufferPointer(), builder.GetSize());
         });
+
+    dispatcher_->appendListener(
+        EventType::kCancelOnDisconnect, [&](const EventData& data) {
+          spdlog::info("OrderbookClient EventType::kCancelOnDisconnect");
+
+          using namespace orderbook::serialize;
+
+          auto& cancel = std::get<OrderCancelRequest>(data);
+
+          builder.Clear();
+          builder.Finish(CreateMessage(
+              builder,
+
+              CreateHeader(builder, TimeUtil::EpochNanos(), ++seq_no_,
+                           static_cast<orderbook::serialize::EventTypeCode>(
+                               EventType::kCancelOnDisconnect)),
+
+              Body::OrderCancelRequest, cancel.SerializeTo(builder).Union()));
+
+          socket_.SendFlatBuffer(builder.GetBufferPointer(), builder.GetSize());
+        });
   }
 
   auto Connect(const std::string& addr) -> void {

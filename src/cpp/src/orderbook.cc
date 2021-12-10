@@ -166,6 +166,15 @@ class OrderBook {  // clang-format on
         } else {
           // TODO: send reject
         }
+      } else if (event_type ==
+                 orderbook::serialize::EventTypeCode::CancelOnDisconnect) {
+        const auto* table = flatc_msg->body_as_OrderCancelRequest();
+        std::size_t deleted_order_count{0};
+        for (auto& [key, book] : book_map_) {
+          deleted_order_count += book.CancelAll(table->session_id());
+        }
+        spdlog::info("CancelOnDisconnect for session {}, removed {} orders",
+                     table->session_id(), deleted_order_count);
       } else {
         spdlog::warn("received unknown orderbook::serialize::EventTypeCode");
         // TODO: Send Reject
@@ -242,8 +251,8 @@ auto main(int argc, char** argv) -> int {
 
   std::string addr(argv[1]);
 
-  // OrderBook<typename orderbook::MapListOrderBookTraits<>> book(addr);
-  OrderBook<typename orderbook::IntrusiveListOrderBookTraits<>> book(addr);
+  OrderBook<typename orderbook::IntrusivePtrOrderBookTraits<>> book(addr);
+  // OrderBook<typename orderbook::IntrusiveListOrderBookTraits<>> book(addr);
   book.GenerateOrderBooks();
   book.RegisterListeners();
   book.Run();

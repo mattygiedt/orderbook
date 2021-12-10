@@ -71,12 +71,13 @@ static void BM_AddOrder(benchmark::State& state) {
   }
 }
 
-using MapListTraits = typename orderbook::MapListOrderBookTraits<kPoolSize>;
+using IntrusivePtrTraits =
+    typename orderbook::IntrusivePtrOrderBookTraits<kPoolSize>;
 using IntrusiveListTraits =
     typename orderbook::IntrusiveListOrderBookTraits<kPoolSize>;
 
-BENCHMARK(BM_AddOrder<typename MapListTraits::BidContainerType>);
-BENCHMARK(BM_AddOrder<typename MapListTraits::AskContainerType>);
+BENCHMARK(BM_AddOrder<typename IntrusivePtrTraits::BidContainerType>);
+BENCHMARK(BM_AddOrder<typename IntrusivePtrTraits::AskContainerType>);
 
 BENCHMARK(BM_AddOrder<typename IntrusiveListTraits::BidContainerType>);
 BENCHMARK(BM_AddOrder<typename IntrusiveListTraits::AskContainerType>);

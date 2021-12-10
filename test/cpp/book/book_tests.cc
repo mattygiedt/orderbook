@@ -376,28 +376,28 @@ class OrderBookFixture : public ::testing::Test {  // clang-format on
   }
 };
 
-// orderbook::container::MapListContainer tests
-using MapListOrderBookFixture =
-    OrderBookFixture<orderbook::MapListOrderBookTraits<>>;
+// orderbook::container::IntrusivePtrContainer tests
+using IntrusivePtrOrderBookFixture =
+    OrderBookFixture<orderbook::IntrusivePtrOrderBookTraits<>>;
 
-TEST_F(MapListOrderBookFixture, add_test) { AddTest(); }  // NOLINT
+TEST_F(IntrusivePtrOrderBookFixture, add_test) { AddTest(); }  // NOLINT
 
-TEST_F(MapListOrderBookFixture, modify_buy_test) {  // NOLINT
+TEST_F(IntrusivePtrOrderBookFixture, modify_buy_test) {  // NOLINT
   ModifyTest(SideCode::kBuy);
 }
-TEST_F(MapListOrderBookFixture, modify_sell_test) {  // NOLINT
+TEST_F(IntrusivePtrOrderBookFixture, modify_sell_test) {  // NOLINT
   ModifyTest(SideCode::kSell);
 }
 
-TEST_F(MapListOrderBookFixture, simple_execute_test) {  // NOLINT
+TEST_F(IntrusivePtrOrderBookFixture, simple_execute_test) {  // NOLINT
   SimpleExecuteTest();
 }
 
-TEST_F(MapListOrderBookFixture, partial_execute_test) {  // NOLINT
+TEST_F(IntrusivePtrOrderBookFixture, partial_execute_test) {  // NOLINT
   PartialExecuteTest();
 }
 
-TEST_F(MapListOrderBookFixture, cancel_test) { CancelTest(); }  // NOLINT
+TEST_F(IntrusivePtrOrderBookFixture, cancel_test) { CancelTest(); }  // NOLINT
 
 // orderbook::container::IntrusiveListContainer tests
 using IntrusiveListContainerFixture =

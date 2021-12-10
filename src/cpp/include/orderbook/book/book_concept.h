@@ -10,6 +10,7 @@ namespace orderbook::book {
 // clang-format off
 template <typename BookT>
 concept BookConcept = requires(BookT b,
+                               orderbook::data::SessionId sid,
                                orderbook::data::NewOrderSingle nos,
                                orderbook::data::OrderCancelRequest ocr,
                                orderbook::data::OrderCancelReplaceRequest ocrr,
@@ -17,6 +18,7 @@ concept BookConcept = requires(BookT b,
   b.Add(nos);
   b.Modify(ocrr);
   b.Cancel(ocr);
+  b.CancelAll(sid);
   b.Match(s);
   b.Empty();
   b.Reset();

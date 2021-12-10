@@ -10,15 +10,17 @@ namespace orderbook::container {
 template <typename ContainerT, typename OrderT>
 concept ContainerConcept = requires(ContainerT c,
                                     OrderT o,
-                                    orderbook::data::OrderId id,
+                                    orderbook::data::OrderId oid,
+                                    orderbook::data::SessionId sid,
                                     orderbook::data::NewOrderSingle nos,
                                     orderbook::data::OrderCancelReplaceRequest ocrr,
                                     orderbook::data::OrderCancelRequest ocr)
 {
-  c.Add(nos, id);
+  c.Add(nos, oid);
   c.Modify(ocrr);
   c.Remove(ocr);
   c.Remove(o);
+  c.CancelAll(sid);
   c.Front();
   c.IsEmpty();
   c.Count();

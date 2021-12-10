@@ -167,10 +167,14 @@ class GatewayApplication : public FIX::Application,
     spdlog::info("session logout: session {} -> id {}", session_id.toString(),
                  fix_session_map_[session_id]);
 
+    orderbook::data::OrderCancelRequest cancel;
+    cancel.SetSessionId(Convert(session_id));
+
+    data_ = cancel;
+    dispatcher_->dispatch(EventType::kCancelOnDisconnect, data_);
+
     client_session_map_.erase(fix_session_map_.at(session_id));
     fix_session_map_.erase(session_id);
-
-    // TODO: cancel on disconnect
   }
 
   auto toAdmin(FIX::Message& /*unused*/, const FIX::SessionID& /*unused*/)

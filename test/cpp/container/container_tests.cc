@@ -324,30 +324,31 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
   }
 };
 
-// orderbook::container::MapListContainer tests
-using MapListContainerFixture =
-    ContainerFixture<orderbook::MapListOrderBookTraits<>>;
+// orderbook::container::IntrusivePtrContainer tests
+using IntrusivePtrContainerFixture =
+    ContainerFixture<orderbook::IntrusivePtrOrderBookTraits<>>;
 
-TEST_F(MapListContainerFixture, empty_test) { EmptyTest(); }  // NOLINT
+TEST_F(IntrusivePtrContainerFixture, empty_test) { EmptyTest(); }  // NOLINT
 
-TEST_F(MapListContainerFixture, add_test) { AddTest(); }  // NOLINT
+TEST_F(IntrusivePtrContainerFixture, add_test) { AddTest(); }  // NOLINT
 
-TEST_F(MapListContainerFixture, modify_price_test) {  // NOLINT
+TEST_F(IntrusivePtrContainerFixture, modify_price_test) {  // NOLINT
   ModifyPriceTest();
 }
-TEST_F(MapListContainerFixture, modify_quantity_up_test) {  // NOLINT
-  ModifyQuantityTest(100);                                  // NOLINT
+TEST_F(IntrusivePtrContainerFixture, modify_quantity_up_test) {  // NOLINT
+  ModifyQuantityTest(100);                                       // NOLINT
 }
-TEST_F(MapListContainerFixture, modify_quantity_down_test) {  // NOLINT
-  ModifyQuantityTest(-100);                                   // NOLINT
+TEST_F(IntrusivePtrContainerFixture, modify_quantity_down_test) {  // NOLINT
+  ModifyQuantityTest(-100);                                        // NOLINT
 }
-TEST_F(MapListContainerFixture, modify_price_and_quantity_test) {  // NOLINT
+TEST_F(IntrusivePtrContainerFixture,
+       modify_price_and_quantity_test) {  // NOLINT
   ModifyPriceAndQuantityTest();
 }
 
-TEST_F(MapListContainerFixture, remove_test) { RemoveTest(); }  // NOLINT
+TEST_F(IntrusivePtrContainerFixture, remove_test) { RemoveTest(); }  // NOLINT
 
-TEST_F(MapListContainerFixture, price_level_test) {  // NOLINT
+TEST_F(IntrusivePtrContainerFixture, price_level_test) {  // NOLINT
   PriceLevelTest();
 }
 

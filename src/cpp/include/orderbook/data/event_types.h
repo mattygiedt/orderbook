@@ -24,7 +24,8 @@ enum class EventType : std::uint8_t {
   kOrderCancelled = 8,
   kOrderCompleted = 9,
   kOrderCancelRejected = 10,
-  kOrderModified = 11
+  kOrderModified = 11,
+  kCancelOnDisconnect = 12
 };
 
 using EventData =
