@@ -70,7 +70,8 @@ enum EventTypeCode : uint8 {
     OrderFilled = 7,
     OrderCancelled = 8,
     OrderCompleted = 9,
-    OrderCancelRejected = 10
+    OrderCancelRejected = 10,
+    OrderModified = 11
 }
 
 table Header {
@@ -119,6 +120,7 @@ table OrderCancelRequest {
     order_quantity:int32;
     order_id:uint32;
     session_id:uint32;
+    account_id:uint32;
     instrument_id:uint64;
     client_order_id:string;
     orig_client_order_id:string;
@@ -131,6 +133,7 @@ table OrderCancelReplaceRequest {
     order_quantity:int32;
     order_id:uint32;
     session_id:uint32;
+    account_id:uint32;
     instrument_id:uint64;
     client_order_id:string;
     orig_client_order_id:string;
@@ -142,6 +145,7 @@ table OrderCancelReject {
     order_status:OrderStatusCode;
     cxl_rej_response_to:CxlRejResponseToCode;
     session_id:uint32;
+    account_id:uint32;
     client_order_id:string;
     orig_client_order_id:string;
 }

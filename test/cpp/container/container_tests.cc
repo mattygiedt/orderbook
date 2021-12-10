@@ -60,7 +60,8 @@ class ContainerFixture : public ::testing::Test {  // clang-format on
     request.SetSide(order.GetSide());
     request.SetOrderPrice(order.GetOrderPrice());
     request.SetOrderQuantity(order.GetOrderQuantity());
-    request.SetClientOrderId(order.GetClientOrderId());
+    request.SetOrigClientOrderId(order.GetClientOrderId());
+    request.SetClientOrderId(MakeClientOrderId(kClientOrderIdSize));
     return request;
   }
 

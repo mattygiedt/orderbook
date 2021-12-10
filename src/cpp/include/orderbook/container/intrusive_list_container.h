@@ -179,8 +179,17 @@ class IntrusiveListContainer {
     const auto& order_id_map_iter =
         order_id_map_.find(cancel_request.GetOrderId());
 
-    const auto& clord_id_map_iter = clord_id_map_.find(
-        {cancel_request.GetSessionId(), cancel_request.GetClientOrderId()});
+    // Get the client order id depending on the type of CancelRequest
+    std::string clord_id;
+
+    if (std::is_same<CancelRequest, OrderCancelRequest>::value) {
+      clord_id = cancel_request.GetOrigClientOrderId();
+    } else {
+      clord_id = cancel_request.GetClientOrderId();
+    }
+
+    const auto& clord_id_map_iter =
+        clord_id_map_.find({cancel_request.GetSessionId(), clord_id});
 
     // boolean helpers to ensure valid book state if we can't find the order
     const bool found_order_id_map = order_id_map_iter != order_id_map_.end();
@@ -208,14 +217,23 @@ class IntrusiveListContainer {
         price_level_map_.erase(cancel_request.GetOrderPrice());
       }
 
+      if (std::is_same<CancelRequest, OrderCancelRequest>::value) {
+        // Update the clord_id values in the order
+        order.SetClientOrderId(cancel_request.GetClientOrderId());
+        order.SetOrigClientOrderId(cancel_request.GetOrigClientOrderId());
+      }
+
       // Put the order back into the object pool
+      // NOTE: This only works because
+      //    1. we are single threaded, and
+      //    2. we prevent over-subscribing from the pool
       order.Release();
 
       return {true, order};
     }
 
     spdlog::warn(
-        "MapListContainer::Remove unknown order for cancel_request: [ "
+        "IntrusiveListContainer::Remove unknown order for cancel_request: [ "
         "order_id: {}, sess: {}, clord_id: {}, orig_clord_id: {} ]",
         cancel_request.GetOrderId(), cancel_request.GetSessionId(),
         cancel_request.GetClientOrderId(),
@@ -224,7 +242,7 @@ class IntrusiveListContainer {
     // We should either find or not find the cancel_request in both order maps
     if (found_order_id_map != found_clord_id_map) {
       spdlog::error(
-          "MapListContainer::Remove inconsistent order map state: "
+          "IntrusiveListContainer::Remove inconsistent order map state: "
           "found_order_id_map {}, found_clord_id_map {}",
           found_order_id_map, found_clord_id_map);
     }
@@ -293,6 +311,7 @@ class IntrusiveListContainer {
         .SetLastPrice(0)
         .SetLastQuantity(0)
         .SetExecutedValue(0)
+        .ClearOrigClientOrderId()
         .Mark();
 
     return ordr;

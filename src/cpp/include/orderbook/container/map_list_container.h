@@ -176,8 +176,17 @@ class MapListContainer {
     const auto& order_id_map_iter =
         order_id_map_.find(cancel_request.GetOrderId());
 
-    const auto& clord_id_map_iter = clord_id_map_.find(
-        {cancel_request.GetSessionId(), cancel_request.GetClientOrderId()});
+    // Get the client order id depending on the type of CancelRequest
+    std::string clord_id;
+
+    if (std::is_same<CancelRequest, OrderCancelRequest>::value) {
+      clord_id = cancel_request.GetOrigClientOrderId();
+    } else {
+      clord_id = cancel_request.GetClientOrderId();
+    }
+
+    const auto& clord_id_map_iter =
+        clord_id_map_.find({cancel_request.GetSessionId(), clord_id});
 
     // boolean helpers to ensure valid book state if we can't find the order
     const bool found_order_id_map = order_id_map_iter != order_id_map_.end();
@@ -203,6 +212,12 @@ class MapListContainer {
       // if our price level is now empty, remove it, too
       if (list.empty()) {
         price_level_map_.erase(cancel_request.GetOrderPrice());
+      }
+
+      if (std::is_same<CancelRequest, OrderCancelRequest>::value) {
+        // Update the clord_id values in the order
+        order->SetClientOrderId(cancel_request.GetClientOrderId());
+        order->SetOrigClientOrderId(cancel_request.GetOrigClientOrderId());
       }
 
       return {true, *order};
@@ -286,6 +301,7 @@ class MapListContainer {
         .SetLastPrice(0)
         .SetLastQuantity(0)
         .SetExecutedValue(0)
+        .ClearOrigClientOrderId()
         .Mark();
 
     return ord;

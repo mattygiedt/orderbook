@@ -288,6 +288,10 @@ class BaseData {
     client_order_id_ = client_order_id;
     return *this;
   }
+  auto ClearClientOrderId() -> BaseData& {
+    client_order_id_.clear();
+    return *this;
+  }
 
   auto GetOrigClientOrderId() -> OrigClientOrderId {
     return orig_client_order_id_;
@@ -297,6 +301,13 @@ class BaseData {
       -> BaseData& {
     orig_client_order_id_ = orig_client_order_id;
     return *this;
+  }
+  auto ClearOrigClientOrderId() -> BaseData& {
+    orig_client_order_id_.clear();
+    return *this;
+  }
+  auto HasOrigClientOrderId() const -> bool {
+    return !orig_client_order_id_.empty();
   }
 
   auto GetSessionId() -> SessionId { return session_id_; }
@@ -363,8 +374,10 @@ class BaseData {
         client_order_id_(client_order_id),
         orig_client_order_id_(orig_client_order_id) {}
 
+  // Used by order_cancel_reject
   BaseData(const TransactionId& tx_id, const RoutingId& routing_id,
-           const OrderStatus& order_status, const OrderId& order_id,
+           const OrderStatus& order_status, const AccountId& account_id,
+           const OrderId& order_id, const SessionId& session_id,
            const ClientOrderId& client_order_id,
            const OrigClientOrderId& orig_client_order_id)
       : transaction_id_(tx_id),
@@ -372,7 +385,9 @@ class BaseData {
         last_modify_tm_(TimeUtil::EpochNanos()),
         routing_id_(routing_id),
         order_status_(order_status),
+        account_id_(account_id),
         order_id_(order_id),
+        session_id_(session_id),
         client_order_id_(client_order_id),
         orig_client_order_id_(orig_client_order_id) {}
 

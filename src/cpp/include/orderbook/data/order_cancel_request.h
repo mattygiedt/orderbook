@@ -21,6 +21,7 @@ struct OrderCancelRequest : BaseData {
     SetOrderQuantity(table->order_quantity());
     SetOrderId(table->order_id());
     SetSessionId(table->session_id());
+    SetAccountId(table->account_id());
     SetInstrumentId(table->instrument_id());
     SetClientOrderId(table->client_order_id()->str());
     SetOrigClientOrderId(table->orig_client_order_id()->str());
@@ -30,7 +31,7 @@ struct OrderCancelRequest : BaseData {
       -> flatbuffers::Offset<orderbook::serialize::OrderCancelRequest> {
     return orderbook::serialize::CreateOrderCancelRequest(
         builder, GetSerializedSide(), GetOrderQuantity(), GetOrderId(),
-        GetSessionId(), GetInstrumentId(),
+        GetSessionId(), GetAccountId(), GetInstrumentId(),
         builder.CreateString(GetClientOrderId()),
         builder.CreateString(GetOrigClientOrderId()));
   }

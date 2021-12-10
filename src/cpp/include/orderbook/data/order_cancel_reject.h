@@ -25,10 +25,13 @@ struct OrderCancelReject : public BaseData {
       : BaseData() {
     SetOrderId(table->order_id());
     SetOrderStatus(static_cast<OrderStatusCode>(table->order_status()));
-    cxl_rej_response_to_ =
-        static_cast<CxlRejResponseToCode>(table->cxl_rej_response_to());
     SetClientOrderId(table->client_order_id()->str());
     SetOrigClientOrderId(table->orig_client_order_id()->str());
+    SetSessionId(table->session_id());
+    SetAccountId(table->account_id());
+
+    cxl_rej_response_to_ =
+        static_cast<CxlRejResponseToCode>(table->cxl_rej_response_to());
   }
 
   template <typename CancelRequest>
@@ -36,7 +39,8 @@ struct OrderCancelReject : public BaseData {
                     const CancelRequest& cancel_request,
                     const CxlRejResponseTo& cxl_rej_response_to)
       : BaseData(tx_id, cancel_request.GetRoutingId(),
-                 cancel_request.GetOrderStatus(), cancel_request.GetOrderId(),
+                 OrderStatus::kCancelRejected, cancel_request.GetAccountId(),
+                 cancel_request.GetOrderId(), cancel_request.GetSessionId(),
                  cancel_request.GetClientOrderId(),
                  cancel_request.GetOrigClientOrderId()),
         cxl_rej_response_to_(cxl_rej_response_to) {}
@@ -45,7 +49,7 @@ struct OrderCancelReject : public BaseData {
       -> flatbuffers::Offset<orderbook::serialize::OrderCancelReject> {
     return orderbook::serialize::CreateOrderCancelReject(
         builder, GetOrderId(), GetSerializedOrderStatus(),
-        GetSerializedCxlRejResponseTo(), GetSessionId(),
+        GetSerializedCxlRejResponseTo(), GetSessionId(), GetAccountId(),
         builder.CreateString(GetClientOrderId()),
         builder.CreateString(GetOrigClientOrderId()));
   }
@@ -55,6 +59,8 @@ struct OrderCancelReject : public BaseData {
     return static_cast<orderbook::serialize::CxlRejResponseToCode>(
         cxl_rej_response_to_);
   }
+
+  auto& GetCxlRejResponseTo() const { return cxl_rej_response_to_; }
 
   CxlRejResponseTo cxl_rej_response_to_;
 };

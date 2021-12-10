@@ -27,6 +27,10 @@ static auto MakeClientOrderId(const std::size_t& length) -> std::string {
 }
 
 class FixClient : public FIX::Application, public FIX42::MessageCracker {
+ private:
+  inline static constexpr char kHandleInstr =
+      FIX::HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION;
+
  public:
   FixClient(std::string config)
       : config_(std::move(config)), initiator_{nullptr} {}
@@ -51,31 +55,66 @@ class FixClient : public FIX::Application, public FIX42::MessageCracker {
 
   auto onLogon(const FIX::SessionID& session_id) -> void override {
     spdlog::info("session logon: {}", session_id.toString());
-    SendNewOrderSingle(123.456, 42, "AAPL", 1999, 1, FIX::Side_BUY);   // NOLINT
-    SendNewOrderSingle(123.455, 21, "AAPL", 1999, 1, FIX::Side_SELL);  // NOLINT
-    SendNewOrderSingle(123.456, 22, "AAPL", 1999, 1, FIX::Side_SELL);  // NOLINT
-    SendNewOrderSingle(123.46, 1, "AAPL", 1999, 1, FIX::Side_BUY);     // NOLINT
+    SendNewOrderRequest(123.456, 42, "AAPL", 1999, 1, FIX::Side_BUY);  // NOLINT
+    SendCancelOrderRequest(42, "AAPL", 1999, 1, FIX::Side_BUY, 1,      // NOLINT
+                           "00000001");                                // NOLINT
+    SendCancelOrderRequest(42, "AAPL", 1999, 1, FIX::Side_BUY, 1,      // NOLINT
+                           "00000001");                                // NOLINT
+                                                                       //
+    //    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,  // NOLINT
+    //                        FIX::Side_BUY);                 // NOLINT
+    //    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,  // NOLINT
+    //                        FIX::Side_SELL);                // NOLINT
+    //
+    //    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,              //
+    //    NOLINT
+    //                        FIX::Side_BUY);                             //
+    //                        NOLINT
+    //    SendNewOrderRequest(123.456, 50, "AAPL", 1999, 1,               //
+    //    NOLINT
+    //                        FIX::Side_SELL);                            //
+    //                        NOLINT
+    //    SendCancelOrderRequest(100, "AAPL", 1999, 1, FIX::Side_BUY, 4,  //
+    //    NOLINT
+    //                           "00000005");                             //
+    //                           NOLINT
+    //
+    //    SendNewOrderRequest(123.456, 100, "AAPL", 1999, 1,     // NOLINT
+    //                        FIX::Side_BUY);                    // NOLINT
+    //    SendModifyOrderRequest(123.456, 50, "AAPL", 1999, 1,   // NOLINT
+    //                           FIX::Side_BUY, 6, "00000008");  // NOLINT
+    //
+    /*
+SendCancelOrderRequest(const std::int32_t& quantity,
+                              const std::string& symbol,
+                              const std::uint32_t& instrument_id,
+                              const std::uint32_t& account_id,
+                              const FIX::Side& side,
+                              const std::uint32_t& order_id,
+                              const std::string& orig_clord_id)
+
+    SendNewOrderRequest(123.455, 21, "AAPL", 1999, 1,
+                        FIX::Side_SELL);  // NOLINT
+    SendNewOrderRequest(123.456, 22, "AAPL", 1999, 1,
+                        FIX::Side_SELL);                             // NOLINT
+    SendNewOrderRequest(123.46, 1, "AAPL", 1999, 1, FIX::Side_BUY);  // NOLINT
+    */
   }
 
   auto onLogout(const FIX::SessionID& session_id) -> void override {
     spdlog::info("session logout: {}", session_id.toString());
   }
 
-  auto toAdmin(FIX::Message& message, const FIX::SessionID& /*unused*/)
-      -> void override {
-    spdlog::info("toAdmin: {}", message.toString());
-  }
+  auto toAdmin(FIX::Message& /*unused*/, const FIX::SessionID& /*unused*/)
+      -> void override {}
 
-  auto toApp(FIX::Message& message, const FIX::SessionID& /*unused*/)
-      EXCEPT(FIX::DoNotSend) -> void override {
-    spdlog::info("toApp: {}", message.toString());
-  }
+  auto toApp(FIX::Message& /*unused*/, const FIX::SessionID& /*unused*/)
+      EXCEPT(FIX::DoNotSend) -> void override {}
 
-  auto fromAdmin(const FIX::Message& message, const FIX::SessionID& /*unused*/)
+  auto fromAdmin(const FIX::Message& /*unused*/,
+                 const FIX::SessionID& /*unused*/)
       EXCEPT(FIX::FieldNotFound, FIX::IncorrectDataFormat,
-             FIX::IncorrectTagValue, FIX::RejectLogon) -> void override {
-    spdlog::info("fromAdmin: {}", message.toString());
-  }
+             FIX::IncorrectTagValue, FIX::RejectLogon) -> void override {}
 
   auto fromApp(const FIX::Message& message, const FIX::SessionID& sessionID)
       EXCEPT(FIX::FieldNotFound, FIX::IncorrectDataFormat,
@@ -86,7 +125,44 @@ class FixClient : public FIX::Application, public FIX42::MessageCracker {
 
   auto onMessage(const FIX42::ExecutionReport& message,
                  const FIX::SessionID& /*unused*/) -> void override {
-    spdlog::info("onMessage::ExecutionReport {}", message.toXML());
+    FIX::OrderID order_id;
+    FIX::ExecID exec_id;
+    FIX::ExecTransType exec_trans_type;
+    FIX::OrdStatus ord_status;
+    FIX::Symbol symbol;
+    FIX::Side side;
+    FIX::OrderQty order_qty;
+    FIX::LeavesQty leaves_qty;
+    FIX::CumQty cum_qty;
+    FIX::Price px;
+    FIX::AvgPx avg_px;
+    FIX::ClOrdID clord_id;
+    FIX::OrigClOrdID orig_clord_id;
+    FIX::SecurityID security_id;
+
+    message.get(order_id);
+    message.get(exec_id);
+    message.get(exec_trans_type);
+    message.get(ord_status);
+    message.get(symbol);
+    message.get(side);
+    message.get(order_qty);
+    message.get(leaves_qty);
+    message.get(cum_qty);
+    message.get(px);
+    message.get(avg_px);
+    message.get(clord_id);
+    message.get(security_id);
+    message.getIfSet(orig_clord_id);
+
+    spdlog::info(
+        "onMessage: ExecutionReport order_id {}, exec_id {}, security_id {}, "
+        "ord_status {}, side {}, order_qty {}, leaves_qty {}, cum_qty {}, "
+        "px {}, avg_px {}, clord_id {}, orig_clord_id {}",
+        order_id.getString(), exec_id.getString(), security_id.getString(),
+        ord_status.getString(), side.getString(), order_qty.getString(),
+        leaves_qty.getString(), cum_qty.getString(), px.getString(),
+        avg_px.getString(), clord_id.getString(), orig_clord_id.getString());
   }
 
   auto onMessage(const FIX42::OrderCancelReject& message,
@@ -94,18 +170,15 @@ class FixClient : public FIX::Application, public FIX42::MessageCracker {
     spdlog::info("onMessage::OrderCancelReject {}", message.toXML());
   }
 
-  auto SendNewOrderSingle(const double& price, const std::uint32_t& quantity,
-                          const std::string& symbol,
-                          const std::uint32_t& instrument_id,
-                          const std::uint32_t& account_id,
-                          const FIX::Side& side) -> void {
+  auto SendNewOrderRequest(const double& price, const std::int32_t& quantity,
+                           const std::string& symbol,
+                           const std::uint32_t& instrument_id,
+                           const std::uint32_t& account_id,
+                           const FIX::Side& side) -> void {
     FIX42::NewOrderSingle newOrderSingle(
         FIX::ClOrdID(MakeClientOrderId(kClientOrderIdSize)),
-        FIX::HandlInst(
-            FIX::
-                HandlInst_AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION),
-        FIX::Symbol(symbol), FIX::Side(side), FIX::TransactTime(),
-        FIX::OrdType(FIX::OrdType_LIMIT));
+        FIX::HandlInst(kHandleInstr), FIX::Symbol(symbol), FIX::Side(side),
+        FIX::TransactTime(), FIX::OrdType(FIX::OrdType_LIMIT));
 
     newOrderSingle.setField(FIX::OrderQty(quantity));
     newOrderSingle.setField(FIX::Price(price));
@@ -116,6 +189,53 @@ class FixClient : public FIX::Application, public FIX42::MessageCracker {
     newOrderSingle.setField(FIX::TimeInForce(FIX::TimeInForce_DAY));
 
     FIX::Session::sendToTarget(newOrderSingle, session_id_);
+  }
+
+  auto SendModifyOrderRequest(const double& price, const std::int32_t& quantity,
+                              const std::string& symbol,
+                              const std::uint32_t& instrument_id,
+                              const std::uint32_t& account_id,
+                              const FIX::Side& side,
+                              const std::uint32_t& order_id,
+                              const std::string& orig_clord_id) -> void {
+    FIX42::OrderCancelReplaceRequest cancelReplaceRequest(
+        FIX::OrigClOrdID(orig_clord_id),
+        FIX::ClOrdID(MakeClientOrderId(kClientOrderIdSize)),
+        FIX::HandlInst(kHandleInstr), FIX::Symbol(symbol), FIX::Side(side),
+        FIX::TransactTime(), FIX::OrdType(FIX::OrdType_LIMIT));
+
+    cancelReplaceRequest.setField(FIX::OrderQty(quantity));
+    cancelReplaceRequest.setField(FIX::Price(price));
+    cancelReplaceRequest.setField(FIX::OrderID(std::to_string(order_id)));
+    cancelReplaceRequest.setField(FIX::Account(std::to_string(account_id)));
+    cancelReplaceRequest.setField(
+        FIX::SecurityID(std::to_string(instrument_id)));
+    cancelReplaceRequest.setField(
+        FIX::SecurityIDSource(FIX::SecurityIDSource_EXCHANGE_SYMBOL));
+
+    FIX::Session::sendToTarget(cancelReplaceRequest, session_id_);
+  }
+
+  auto SendCancelOrderRequest(const std::int32_t& quantity,
+                              const std::string& symbol,
+                              const std::uint32_t& instrument_id,
+                              const std::uint32_t& account_id,
+                              const FIX::Side& side,
+                              const std::uint32_t& order_id,
+                              const std::string& orig_clord_id) -> void {
+    FIX42::OrderCancelRequest orderCancelRequest(
+        FIX::OrigClOrdID(orig_clord_id),
+        FIX::ClOrdID(MakeClientOrderId(kClientOrderIdSize)),
+        FIX::Symbol(symbol), FIX::Side(side), FIX::TransactTime());
+
+    orderCancelRequest.setField(FIX::SecurityID(std::to_string(instrument_id)));
+    orderCancelRequest.setField(
+        FIX::SecurityIDSource(FIX::SecurityIDSource_EXCHANGE_SYMBOL));
+    orderCancelRequest.setField(FIX::OrderID(std::to_string(order_id)));
+    orderCancelRequest.setField(FIX::Account(std::to_string(account_id)));
+    orderCancelRequest.setField(FIX::OrderQty(quantity));
+
+    FIX::Session::sendToTarget(orderCancelRequest, session_id_);
   }
 
  private:

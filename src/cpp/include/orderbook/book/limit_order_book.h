@@ -217,7 +217,7 @@ class LimitOrderBook {
   }
 
   /**
-   * Send a cancel reject message back to the client
+   * Send a cancel reject message back to the client.
    */
   template <typename CancelRequest>
   auto CancelRejectOrder(const CancelRequest& cancel_request,
