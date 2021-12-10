@@ -43,8 +43,8 @@ Total Test time (real) =   4.86 sec
 
 There are three binary executables created under `/src/cpp`:
 
-* `client` -- Example application that sends FIX.4.2 messages to the order book
-* `gateway` -- FIX.4.2 gateway application that proxies FIX and FlatBuffer between the client and the order book
+* `client` -- Example application that sends FIX.4.2 messages to the order book via the `gateway`
+* `gateway` -- FIX.4.2 gateway application that proxies FIX and FlatBuffer messaging between the `client` and the `orderbook`
 * `orderbook` -- The order book application
 
 Start three separate `bash` shells, and run the client / gateway / orderbook in each:
