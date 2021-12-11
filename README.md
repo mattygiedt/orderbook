@@ -76,9 +76,12 @@ Each implementation shares the same interface defined in the `ContainerConcept` 
 
 
 ### Benchmarking
+
+Note: there are additional template configuration parameters not yet applied that should help the `IntrusiveListContainer`.
+
 ```
-root@345a55e505f8:/workspaces/orderbook/build/benchmark/container# ./container_benchmark
-2021-12-02T20:35:57+00:00
+root@:/workspaces/orderbook/build/benchmark/container# ./container_benchmark
+2021-12-11T15:25:21+00:00
 Running ./container_benchmark
 Run on (6 X 2999.99 MHz CPU s)
 CPU Caches:
@@ -86,14 +89,14 @@ CPU Caches:
   L1 Instruction 32 KiB (x6)
   L2 Unified 256 KiB (x6)
   L3 Unified 9216 KiB (x1)
-Load Average: 0.54, 0.82, 0.61
+Load Average: 0.07, 0.02, 0.00
 ------------------------------------------------------------------------------------------------------
 Benchmark                                                            Time             CPU   Iterations
 ------------------------------------------------------------------------------------------------------
-BM_AddOrder<typename MapListTraits::BidContainerType>             4643 ns         4642 ns       150282
-BM_AddOrder<typename MapListTraits::AskContainerType>             4924 ns         4924 ns       147072
-BM_AddOrder<typename IntrusiveListTraits::BidContainerType>       4197 ns         4197 ns       167427
-BM_AddOrder<typename IntrusiveListTraits::AskContainerType>       4185 ns         4184 ns       162740
+BM_AddOrder<typename IntrusivePtrTraits::BidContainerType>       43731 ns        43726 ns        15446
+BM_AddOrder<typename IntrusivePtrTraits::AskContainerType>       44812 ns        44811 ns        15720
+BM_AddOrder<typename IntrusiveListTraits::BidContainerType>      44274 ns        44273 ns        15988
+BM_AddOrder<typename IntrusiveListTraits::AskContainerType>      43295 ns        43295 ns        15299
 ```
 
 ### TODO
