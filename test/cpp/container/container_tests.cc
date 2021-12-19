@@ -341,8 +341,8 @@ TEST_F(IntrusivePtrContainerFixture, modify_quantity_up_test) {  // NOLINT
 TEST_F(IntrusivePtrContainerFixture, modify_quantity_down_test) {  // NOLINT
   ModifyQuantityTest(-100);                                        // NOLINT
 }
-TEST_F(IntrusivePtrContainerFixture,
-       modify_price_and_quantity_test) {  // NOLINT
+TEST_F(IntrusivePtrContainerFixture,  // NOLINT
+       modify_price_and_quantity_test) {
   ModifyPriceAndQuantityTest();
 }
 
@@ -369,8 +369,8 @@ TEST_F(IntrusiveListContainerFixture, modify_quantity_up_test) {  // NOLINT
 TEST_F(IntrusiveListContainerFixture, modify_quantity_down_test) {  // NOLINT
   ModifyQuantityTest(-100);                                         // NOLINT
 }
-TEST_F(IntrusiveListContainerFixture,     // NOLINT
-       modify_price_and_quantity_test) {  // NOLINT
+TEST_F(IntrusiveListContainerFixture,  // NOLINT
+       modify_price_and_quantity_test) {
   ModifyPriceAndQuantityTest();
 }
 
