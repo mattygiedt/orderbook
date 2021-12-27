@@ -66,13 +66,14 @@ W.K. Selpf wrote a really cool [article](http://howtohft.wordpress.com/2011/02/1
 
 That's basically what you'll find here, written in my best attempt at modern C++20'ish concepts and syntax.
 
-### Boost Intrusive
-There are two limit order book containers:
+### Order Book Implemetations
+There are three limit order book containers:
 
+* `MapListContainer` -- reference limit order book implementation.
 * `IntrusivePtrContainer` -- read up on intrusive pointers [here](https://www.boost.org/doc/libs/1_78_0/libs/smart_ptr/doc/html/smart_ptr.html#intrusive_ptr).
 * `IntrusiveListContainer` -- read up on the intrusive list data structure [here](https://www.boost.org/doc/libs/1_78_0/doc/html/intrusive.html).
 
-Each implementation shares the same interface defined in the `ContainerConcept` and, frankly, I wish I could figure out how to provide each implementation with a common base class as there is way too much code duplication between the two.
+Each implementation shares the same interface defined in the `ContainerConcept`.
 
 
 ### Benchmarking
@@ -81,22 +82,24 @@ Note: there are additional template configuration parameters not yet applied tha
 
 ```
 root@:/workspaces/orderbook/build/benchmark/container# ./container_benchmark
-2021-12-11T15:25:21+00:00
+2021-12-27T23:32:49+00:00
 Running ./container_benchmark
-Run on (6 X 2999.99 MHz CPU s)
+Run on (6 X 3000.01 MHz CPU s)
 CPU Caches:
   L1 Data 32 KiB (x6)
   L1 Instruction 32 KiB (x6)
   L2 Unified 256 KiB (x6)
   L3 Unified 9216 KiB (x1)
-Load Average: 0.07, 0.02, 0.00
-------------------------------------------------------------------------------------------------------
-Benchmark                                                            Time             CPU   Iterations
-------------------------------------------------------------------------------------------------------
-BM_AddOrder<typename IntrusivePtrTraits::BidContainerType>       43731 ns        43726 ns        15446
-BM_AddOrder<typename IntrusivePtrTraits::AskContainerType>       44812 ns        44811 ns        15720
-BM_AddOrder<typename IntrusiveListTraits::BidContainerType>      44274 ns        44273 ns        15988
-BM_AddOrder<typename IntrusiveListTraits::AskContainerType>      43295 ns        43295 ns        15299
+Load Average: 2.78, 1.45, 0.76
+------------------------------------------------------------------------------------------------------------------
+Benchmark                                                                        Time             CPU   Iterations
+------------------------------------------------------------------------------------------------------------------
+BM_AddModifyDeleteOrder<typename MapListTraits::BidContainerType>            26597 ns        26597 ns        25896
+BM_AddModifyDeleteOrder<typename MapListTraits::AskContainerType>            27690 ns        27689 ns        25291
+BM_AddModifyDeleteOrder<typename IntrusivePtrTraits::BidContainerType>       23943 ns        23943 ns        28452
+BM_AddModifyDeleteOrder<typename IntrusivePtrTraits::AskContainerType>       23648 ns        23648 ns        29443
+BM_AddModifyDeleteOrder<typename IntrusiveListTraits::BidContainerType>      22504 ns        22504 ns        30855
+BM_AddModifyDeleteOrder<typename IntrusiveListTraits::AskContainerType>      22448 ns        22448 ns        30815
 ```
 
 ### TODO
@@ -108,5 +111,6 @@ BM_AddOrder<typename IntrusiveListTraits::AskContainerType>      43295 ns       
 * ~~Support cancel-on-disconnect~~
 * ~~Performance benchmarking~~
 * ~~FIX.4.2 Client Gateway~~
+* Refactor containers using LimitOrder object in return pair
 * Optimizing `orderbook::data` object members via flatbuffer API
 * Marketdata?

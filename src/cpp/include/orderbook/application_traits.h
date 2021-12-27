@@ -14,6 +14,7 @@
 #include "orderbook/container/container_concept.h"
 #include "orderbook/container/intrusive_list_container.h"
 #include "orderbook/container/intrusive_ptr_container.h"
+#include "orderbook/container/map_list_container.h"
 #include "orderbook/data/event_types.h"
 #include "orderbook/data/limit_order.h"
 #include "orderbook/data/object_pool.h"
@@ -23,6 +24,25 @@
 #include "spdlog/spdlog.h"
 
 namespace orderbook {
+
+struct MapListOrderBookTraits {
+  using PriceLevelKey = orderbook::data::Price;
+  using OrderType = orderbook::data::LimitOrder;
+
+  using EventType = orderbook::data::EventType;
+  using EventData = orderbook::data::EventData;
+  using EventCallback = orderbook::data::EventCallback;
+  using EventDispatcher = eventpp::EventDispatcher<EventType, EventCallback>;
+
+  using BidContainerType =
+      orderbook::container::MapListContainer<PriceLevelKey, std::greater<>>;
+  using AskContainerType =
+      orderbook::container::MapListContainer<PriceLevelKey, std::less<>>;
+
+  using BookType =
+      orderbook::book::LimitOrderBook<BidContainerType, AskContainerType,
+                                      OrderType, EventDispatcher>;
+};
 
 template <std::size_t PoolSize = 16384>
 struct IntrusivePtrOrderBookTraits {

@@ -6,21 +6,22 @@
 #include "boost/functional/hash.hpp"
 #include "boost/intrusive_ptr.hpp"
 #include "orderbook/data/data_types.h"
+#include "orderbook/data/limit_order.h"
 #include "orderbook/data/new_order_single.h"
 #include "orderbook/data/order_cancel_request.h"
 
 namespace orderbook::container {
 
-template <typename Key, typename Order, typename Pool, typename Compare>
-class IntrusivePtrContainer {
+template <typename Key, typename Compare>
+class MapListContainer {
  private:
   using OrderId = orderbook::data::OrderId;
+  using LimitOrder = orderbook::data::LimitOrder;
   using SessionId = orderbook::data::SessionId;
   using ClientOrderId = orderbook::data::ClientOrderId;
   using OrderStatus = orderbook::data::OrderStatus;
-  using OrderPtr = boost::intrusive_ptr<Order>;
-  using ReturnPair = std::pair<bool, Order&>;
-  using List = std::list<OrderPtr>;
+  using ReturnPair = std::pair<bool, LimitOrder>;
+  using List = std::list<LimitOrder>;
   using Iterator = typename List::iterator;
   using PriceLevelMap = std::map<Key, List, Compare>;
   using OrderIdMap = std::unordered_map<OrderId, Iterator>;
@@ -31,13 +32,13 @@ class IntrusivePtrContainer {
   using OrderCancelRequest = orderbook::data::OrderCancelRequest;
   using OrderCancelReplaceRequest = orderbook::data::OrderCancelReplaceRequest;
 
-  inline static Pool& pool = Pool::Instance();
-  inline static Order invalid{};
-  inline static ReturnPair kFalsePair = {false, std::ref(invalid)};
+  inline static LimitOrder invalid{};
+  inline static ReturnPair kFalsePair = {false, invalid};
 
  public:
-  static constexpr std::size_t GetPoolSize() { return Pool::kPoolSize; }
-  static std::size_t Available() { return pool.Available(); }
+  static std::size_t Available() {
+    return std::numeric_limits<std::size_t>::max();
+  }
 
   /**
    * Add the new order single to the container.
@@ -47,8 +48,17 @@ class IntrusivePtrContainer {
    */
   auto Add(const NewOrderSingle& order_request, const OrderId& order_id)
       -> ReturnPair {
+    // spdlog::info(
+    //    "MapListContainer::Add request[ order_id {} ] -> [ sess: {}, clord_id:
+    //    "
+    //    "{}, orig_clord_id: {}, price: {}, quantity: {}]",
+    //    order_id, order_request.GetSessionId(),
+    //    order_request.GetClientOrderId(),
+    //    order_request.GetOrigClientOrderId(), order_request.GetOrderPrice(),
+    //    order_request.GetOrderQuantity());
+
     // Create a new order intrusive_ptr
-    auto order = IntrusivePtrContainer::MakeOrder(order_request, order_id);
+    auto order = MapListContainer::MakeOrder(order_request, order_id);
 
     // Does our clord_id set contain the requested client_order_id key?
     const ClientOrderIdKey& clord_id_key = {order_request.GetSessionId(),
@@ -58,22 +68,30 @@ class IntrusivePtrContainer {
 
     if (clord_id_map_iter != clord_id_map_.end()) {
       spdlog::warn(
-          "IntrusivePtrContainer::Add duplicate clord_id '{}' for session {}, "
+          "MapListContainer::Add duplicate clord_id '{}' for session {}, "
           "rejecting order_id: {}",
           clord_id_key.second, clord_id_key.first, order_id);
-      order->SetOrderStatus(OrderStatus::kRejected);
-      return {false, *order};
+      order.SetOrderStatus(OrderStatus::kRejected);
+      return {false, order};
     }
 
     // Add the order to the order book
-    order->SetOrderStatus(OrderStatus::kNew);
-    auto& list = price_level_map_[order->GetOrderPrice()];
+    order.SetOrderStatus(OrderStatus::kNew);
+    auto& list = price_level_map_[order.GetOrderPrice()];
     auto&& iter = list.insert(list.end(), std::move(order));
     order_id_map_.emplace(order_id, std::forward<Iterator>(iter));
     clord_id_map_.emplace(clord_id_key, order_id);
     ++size_;
 
-    return {true, *(*iter)};
+    // spdlog::info(
+    //    "MapListContainer::Added order[ order_id {} ] -> [ sess: {}, clord_id:
+    //    "
+    //    "{}, orig_clord_id: {}, price: {}, quantity: {}]",
+    //    (*iter).GetOrderId(), (*iter).GetSessionId(),
+    //    (*iter).GetClientOrderId(), (*iter).GetOrigClientOrderId(),
+    //    (*iter).GetOrderPrice(), (*iter).GetOrderQuantity());
+
+    return {true, (*iter)};
   }
 
   /**
@@ -83,36 +101,44 @@ class IntrusivePtrContainer {
    * successfully modified, std::pair[false, empty_order] if not.
    */
   auto Modify(const OrderCancelReplaceRequest& modify_request) -> ReturnPair {
-    // find the order by the order_id we assigned in IntrusivePtrContainer::Add
+    // spdlog::info(
+    //    "MapListContainer::Modify request[ order_id {} ] -> [ sess: {}, "
+    //    "clord_id: {}, orig_clord_id: {}, price: {}, quantity: {}]",
+    //    modify_request.GetOrderId(), modify_request.GetSessionId(),
+    //    modify_request.GetClientOrderId(),
+    //    modify_request.GetOrigClientOrderId(), modify_request.GetOrderPrice(),
+    //    modify_request.GetOrderQuantity());
+
+    // find the order by the order_id we assigned in MapListContainer::Add
     const auto& order_id_map_iter =
         order_id_map_.find(modify_request.GetOrderId());
 
     if (order_id_map_iter != order_id_map_.end()) {
       auto& list = price_level_map_[modify_request.GetOrderPrice()];
       auto& iter = order_id_map_iter->second;
-      auto order = *iter;
+      auto& order = *iter;
 
       // Ensure previous clord_id matches current clord_id, and that the
       // new order quantity is greater-than-or-equals the current executed
       // quantity.
-      if (order->GetSessionId() == modify_request.GetSessionId() &&
-          order->GetClientOrderId() == modify_request.GetOrigClientOrderId() &&
-          order->GetExecutedQuantity() <= modify_request.GetOrderQuantity()) {
+      if (order.GetSessionId() == modify_request.GetSessionId() &&
+          order.GetClientOrderId() == modify_request.GetOrigClientOrderId() &&
+          order.GetExecutedQuantity() <= modify_request.GetOrderQuantity()) {
         // Update the clord_id values in the order and our client order id set
         UpdateClientOrderId(modify_request, order);
 
         // Identify what has changed
         const bool prc_changed =
-            order->GetOrderPrice() != modify_request.GetOrderPrice();
+            order.GetOrderPrice() != modify_request.GetOrderPrice();
         const bool qty_changed =
-            order->GetOrderQuantity() != modify_request.GetOrderQuantity();
+            order.GetOrderQuantity() != modify_request.GetOrderQuantity();
 
         if (prc_changed) {
           // Change in price requires remove + update + add
           RemoveDirect(order);
 
           // Modify the order details
-          order->SetOrderQuantity(modify_request.GetOrderQuantity())
+          order.SetOrderQuantity(modify_request.GetOrderQuantity())
               .SetOrderPrice(modify_request.GetOrderPrice())
               .UpdateOrderStatus()
               .Mark();
@@ -121,14 +147,14 @@ class IntrusivePtrContainer {
           AddDirect(order);
 
         } else if (qty_changed) {
-          if (order->GetOrderQuantity() > modify_request.GetOrderQuantity()) {
+          if (order.GetOrderQuantity() > modify_request.GetOrderQuantity()) {
             // Decrease of order quantity maintains queue spot priority
-            order->SetOrderQuantity(modify_request.GetOrderQuantity())
+            order.SetOrderQuantity(modify_request.GetOrderQuantity())
                 .UpdateOrderStatus()
                 .Mark();
           } else {
             // Update the order quantity, and move it to the end of the queue
-            order->SetOrderQuantity(modify_request.GetOrderQuantity())
+            order.SetOrderQuantity(modify_request.GetOrderQuantity())
                 .UpdateOrderStatus()
                 .Mark();
 
@@ -137,19 +163,27 @@ class IntrusivePtrContainer {
         } else {
           // Currently a NOP, will revisit when we have a strategy for
           // additional fields other than price / quantity.
-          order->Mark();
+          order.Mark();
         }
 
-        return {true, *order};
+        // spdlog::info(
+        //     "MapListContainer::Modified order[ order_id {} ] "
+        //     "-> [ sess: {}, clord_id: {}, orig_clord_id: {}, price: {}, "
+        //     "quantity: {}]",
+        //     order.GetOrderId(), order.GetSessionId(),
+        //     order.GetClientOrderId(), order.GetOrigClientOrderId(),
+        //     order.GetOrderPrice(), order.GetOrderQuantity());
+
+        return {true, order};
       }
 
       spdlog::warn(
-          "IntrusivePtrContainer::Modify business match reject order[ order_id "
-          "{} ] "
-          "-> [ sess: {}, clord_id: {}, orig_clord_id: {}], modify_request[ "
-          "order_id {} ] -> [ sess: {}, clord_id: {}, orig_clord_id: {} ]",
-          order->GetOrderId(), order->GetSessionId(), order->GetClientOrderId(),
-          order->GetOrigClientOrderId(), modify_request.GetOrderId(),
+          "MapListContainer::Modify business match reject order[ order_id "
+          "{} ] -> [ sess: {}, clord_id: {}, orig_clord_id: {}], "
+          "modify_request[ order_id {} ] -> [ sess: {}, clord_id: {}, "
+          "orig_clord_id: {} ]",
+          order.GetOrderId(), order.GetSessionId(), order.GetClientOrderId(),
+          order.GetOrigClientOrderId(), modify_request.GetOrderId(),
           modify_request.GetSessionId(), modify_request.GetClientOrderId(),
           modify_request.GetOrigClientOrderId());
 
@@ -157,9 +191,8 @@ class IntrusivePtrContainer {
     }
 
     spdlog::warn(
-        "IntrusivePtrContainer::Modify unknown order_id: {} for "
-        "modify_request: [ "
-        "sess: {}, clord_id: {}, orig_clord_id: {} ]",
+        "MapListContainer::Modify unknown order_id: {} for "
+        "modify_request: [ sess: {}, clord_id: {}, orig_clord_id: {} ]",
         modify_request.GetOrderId(), modify_request.GetSessionId(),
         modify_request.GetClientOrderId(),
         modify_request.GetOrigClientOrderId());
@@ -218,15 +251,15 @@ class IntrusivePtrContainer {
 
       if (std::is_same<CancelRequest, OrderCancelRequest>::value) {
         // Update the clord_id values in the order
-        order->SetClientOrderId(cancel_request.GetClientOrderId());
-        order->SetOrigClientOrderId(cancel_request.GetOrigClientOrderId());
+        order.SetClientOrderId(cancel_request.GetClientOrderId());
+        order.SetOrigClientOrderId(cancel_request.GetOrigClientOrderId());
       }
 
-      return {true, *order};
+      return {true, order};
     }
 
     spdlog::warn(
-        "IntrusivePtrContainer::Remove unknown order for cancel_request: [ "
+        "MapListContainer::Remove unknown order for cancel_request: [ "
         "order_id: {}, sess: {}, clord_id: {}, orig_clord_id: {} ]",
         cancel_request.GetOrderId(), cancel_request.GetSessionId(),
         cancel_request.GetClientOrderId(),
@@ -235,7 +268,7 @@ class IntrusivePtrContainer {
     // We should either find or not find the cancel_request in both order maps
     if (found_order_id_map != found_clord_id_map) {
       spdlog::error(
-          "IntrusivePtrContainer::Remove inconsistent order map state: "
+          "MapListContainer::Remove inconsistent order map state: "
           "found_order_id_map {}, found_clord_id_map {}",
           found_order_id_map, found_clord_id_map);
     }
@@ -248,11 +281,11 @@ class IntrusivePtrContainer {
 
     for (auto& [key, value] : price_level_map_) {
       for (auto it = value.begin(); it != value.end();) {
-        if ((*it)->GetSessionId() == session_id) {
+        if ((*it).GetSessionId() == session_id) {
           const auto& order_id_map_iter =
-              order_id_map_.find((*it)->GetOrderId());
+              order_id_map_.find((*it).GetOrderId());
           const auto& clord_id_map_iter = clord_id_map_.find(
-              {(*it)->GetSessionId(), (*it)->GetClientOrderId()});
+              {(*it).GetSessionId(), (*it).GetClientOrderId()});
           order_id_map_.erase(order_id_map_iter);
           clord_id_map_.erase(clord_id_map_iter);
           it = value.erase(it);
@@ -274,7 +307,9 @@ class IntrusivePtrContainer {
    * Returns the first order in the list that is mapped to the first
    * key in the price_level_map.
    */
-  auto Front() -> Order& { return *(price_level_map_.begin()->second.front()); }
+  auto Front() -> LimitOrder& {
+    return (price_level_map_.begin()->second.front());
+  }
 
   auto IsEmpty() -> bool { return size_ == 0; }
   auto Count() const -> std::size_t { return size_; }
@@ -307,13 +342,13 @@ class IntrusivePtrContainer {
 
  private:
   /**
-   * Generates a new intrusive_ptr from the pool and initializes it with the new
+   * Generates a new LimitOrder and initializes it with the new
    * order single values.
    */
   static auto MakeOrder(const NewOrderSingle& new_order_single,
-                        const OrderId& order_id) -> OrderPtr {
-    auto ord = pool.MakeIntrusive();
-    ord->SetOrderId(order_id)
+                        const OrderId& order_id) -> LimitOrder {
+    auto ordr = LimitOrder();
+    ordr.SetOrderId(order_id)
         .SetRoutingId(new_order_single.GetRoutingId())
         .SetSessionId(new_order_single.GetSessionId())
         .SetAccountId(new_order_single.GetAccountId())
@@ -333,7 +368,7 @@ class IntrusivePtrContainer {
         .ClearOrigClientOrderId()
         .Mark();
 
-    return ord;
+    return ordr;
   }
 
   /**
@@ -341,7 +376,7 @@ class IntrusivePtrContainer {
    * structures to reflect the new client order state.
    */
   auto UpdateClientOrderId(const OrderCancelReplaceRequest& modify_request,
-                           OrderPtr& order) -> void {
+                           LimitOrder& order) -> void {
     // Erase the old key
     clord_id_map_.erase(
         {modify_request.GetSessionId(), modify_request.GetOrigClientOrderId()});
@@ -352,31 +387,31 @@ class IntrusivePtrContainer {
     clord_id_map_.emplace(new_key, modify_request.GetSessionId());
 
     // Update the order
-    order->SetClientOrderId(modify_request.GetClientOrderId())
+    order.SetClientOrderId(modify_request.GetClientOrderId())
         .SetOrigClientOrderId(modify_request.GetOrigClientOrderId());
   }
 
   /**
    * Adds the order into the order book w/o checking for valid state.
    */
-  auto AddDirect(const OrderPtr& order) -> void {
-    auto& list = price_level_map_[order->GetOrderPrice()];
+  auto AddDirect(const LimitOrder& order) -> void {
+    auto& list = price_level_map_[order.GetOrderPrice()];
     auto&& iter = list.insert(list.end(), std::move(order));
-    order_id_map_.emplace(order->GetOrderId(), std::forward<Iterator>(iter));
+    order_id_map_.emplace(order.GetOrderId(), std::forward<Iterator>(iter));
   }
 
   /**
    * Removes the order from the order book w/o checking for valid state.
    */
-  auto RemoveDirect(const OrderPtr& order) -> void {
-    const auto& order_id_map_iter = order_id_map_.find(order->GetOrderId());
-    auto& list = price_level_map_[order->GetOrderPrice()];
+  auto RemoveDirect(const LimitOrder& order) -> void {
+    const auto& order_id_map_iter = order_id_map_.find(order.GetOrderId());
+    auto& list = price_level_map_[order.GetOrderPrice()];
 
     list.erase(order_id_map_iter->second);
     order_id_map_.erase(order_id_map_iter);
 
     if (list.empty()) {
-      price_level_map_.erase(order->GetOrderPrice());
+      price_level_map_.erase(order.GetOrderPrice());
     }
   }
 

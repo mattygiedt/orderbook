@@ -381,7 +381,6 @@ class IntrusiveListContainer {
 
     list.erase(order_id_map_iter->second);
     order_id_map_.erase(order_id_map_iter);
-    --size_;
 
     if (list.empty()) {
       price_level_map_.erase(order.GetOrderPrice());

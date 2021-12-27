@@ -25,6 +25,7 @@ concept ContainerConcept = requires(ContainerT c,
   c.IsEmpty();
   c.Count();
   c.Clear();
+  ContainerT::Available();
 };
 // clang-format on
 }  // namespace orderbook::container

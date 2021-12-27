@@ -24,6 +24,7 @@ if(ENABLE_BENCHMARKS)
     target_link_libraries( container_benchmark
                            PRIVATE
                            benchmark::benchmark
+                           gtest
                            pthread
                            flatbuf_serialize )
 
