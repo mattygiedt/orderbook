@@ -57,7 +57,7 @@ class MapListContainer {
     //    order_request.GetOrigClientOrderId(), order_request.GetOrderPrice(),
     //    order_request.GetOrderQuantity());
 
-    // Create a new order intrusive_ptr
+    // Create a new limit order
     auto order = MapListContainer::MakeOrder(order_request, order_id);
 
     // Does our clord_id set contain the requested client_order_id key?
@@ -289,6 +289,7 @@ class MapListContainer {
           order_id_map_.erase(order_id_map_iter);
           clord_id_map_.erase(clord_id_map_iter);
           it = value.erase(it);
+          --size_;
           ++order_count;
         } else {
           std::next(it);

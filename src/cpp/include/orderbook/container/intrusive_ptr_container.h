@@ -256,6 +256,7 @@ class IntrusivePtrContainer {
           order_id_map_.erase(order_id_map_iter);
           clord_id_map_.erase(clord_id_map_iter);
           it = value.erase(it);
+          --size_;
           ++order_count;
         } else {
           std::next(it);
