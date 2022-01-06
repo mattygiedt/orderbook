@@ -91,11 +91,9 @@ class IntrusivePool {  // clang-format on
     }
 
     // Have we reached a new max_depth mark?
-    Counter depth = Capacity() - next;
-    if (max_depth_ < depth && depth % 1024 == 0) {
+    const auto depth = Capacity() - next;
+    if (max_depth_ < depth) {
       max_depth_ = depth;
-      spdlog::warn("IntrusivePool {} max_depth: {}", typeid(T).name(),
-                   max_depth_);
     }
 
     // next has successfully been placed into idx_
@@ -204,6 +202,12 @@ class IntrusiveListPool {  // clang-format on
       next = curr - 1;
     }
 
+    // Have we reached a new max_depth mark?
+    const auto depth = Capacity() - next;
+    if (max_depth_ < depth) {
+      max_depth_ = depth;
+    }
+
     // next has successfully been placed into idx_, and curr is greater than
     // zero, which means there is still the ability to pop the vector.
     auto pos = vec_.back();
@@ -213,8 +217,11 @@ class IntrusiveListPool {  // clang-format on
   }
 
   constexpr auto Capacity() const -> std::size_t { return PoolSize; }
-  auto Available() const -> Counter { return vec_.size(); }
+  auto Available() const -> Counter {
+    return idx_.load(std::memory_order_relaxed);
+  }
   auto Depth() const -> Counter { return Capacity() - Available(); }
+  auto MaxDepth() const -> Counter { return max_depth_; }
 
   static auto& Instance() {
     static IntrusiveListPool<T, PoolSize> instance;
@@ -225,6 +232,7 @@ class IntrusiveListPool {  // clang-format on
   Buffer buf_{};
   Stack vec_{};
   AtomicCounter idx_{0};
+  Counter max_depth_{0};
 };
 
 }  // namespace orderbook::data

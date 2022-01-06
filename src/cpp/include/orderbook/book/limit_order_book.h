@@ -29,6 +29,8 @@ class LimitOrderBook {
    * Attempt to add a new order to the order book.
    */
   auto Add(const NewOrderSingle& add_request) -> void {
+    DispatchOrderStatus(EventType::kOrderPendingNew, add_request);
+
     if (add_request.IsBuyOrder()) {
       // object pool is empty
       if (bids_.Available() == 0) {
