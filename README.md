@@ -1,5 +1,5 @@
 # orderbook
-Call me Ishmael... Every software developer has that special problem domain that they keep getting drawn back to and cannot let go. Mine, sadly, (unfortunately?), is thinking about, executing against, and working with limit order exchange venues of varying degrees of sophistication and importance.
+Call me Ishmael... Every software developer has that special problem domain that they keep getting drawn back to and cannot let go. Mine is thinking about, executing against, and working with limit order exchange venues of varying degrees of sophistication and importance.
 
 Put simply, the complex technology in play at the massive exchanges like the CME Globex, or even any full-scale limit order book that supports spread orders is mind-boggling. It simply _has_ to work, with complete redundancy, zero downtime and with deterministic execution. With that in mind ...
 
