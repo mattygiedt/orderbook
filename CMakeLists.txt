@@ -28,7 +28,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # add_compile_options( -Wall -Wextra )
-add_compile_options(-Wall -Wextra -pedantic -Werror)
+add_compile_options( -Wall
+                     -Wextra
+                     -pedantic
+                     -Werror )
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 

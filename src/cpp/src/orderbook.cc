@@ -169,12 +169,15 @@ class OrderBook {  // clang-format on
       } else if (event_type ==
                  orderbook::serialize::EventTypeCode::CancelOnDisconnect) {
         const auto* table = flatc_msg->body_as_OrderCancelRequest();
+        const auto& session_id = table->session_id();
         std::size_t deleted_order_count{0};
-        for (auto& [key, book] : book_map_) {
-          deleted_order_count += book.CancelAll(table->session_id());
+        for ([[maybe_unused]] auto& [key, book] : book_map_) {
+          spdlog::info("CancelOnDisconnect for key {}, session {}",
+                        key, session_id);
+          deleted_order_count += book.CancelAll(session_id);
         }
         spdlog::info("CancelOnDisconnect for session {}, removed {} orders",
-                     table->session_id(), deleted_order_count);
+                      session_id, deleted_order_count);
       } else {
         spdlog::warn("received unknown orderbook::serialize::EventTypeCode");
         // TODO: Send Reject

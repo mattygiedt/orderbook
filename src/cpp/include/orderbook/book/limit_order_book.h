@@ -126,9 +126,8 @@ class LimitOrderBook {
   }
 
   auto CancelAll(const SessionId& session_id) -> std::size_t {
-    std::size_t deleted_order_count{0};
-    deleted_order_count += bids_.CancelAll(session_id);
-    deleted_order_count += asks_.CancelAll(session_id);
+    std::size_t deleted_order_count =
+      bids_.CancelAll(session_id) + asks_.CancelAll(session_id);
     return deleted_order_count;
   }
 

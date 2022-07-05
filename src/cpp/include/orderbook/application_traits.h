@@ -23,6 +23,74 @@
 #include "orderbook/util/time_util.h"
 #include "spdlog/spdlog.h"
 
+template <> struct fmt::formatter<orderbook::data::SideCode> : formatter<std::string_view> {
+    using SideCode = orderbook::data::SideCode;
+
+    template <typename FormatContext>
+    auto format(SideCode c, FormatContext& ctx) {
+
+        std::string_view name = "Unknown";
+        switch (c) {
+         case SideCode::kUnknown: break;
+         case SideCode::kBuy: name = "Buy"; break;
+         case SideCode::kSell: name = "Sell"; break;
+         case SideCode::kSellShort: name = "SellShort"; break;
+         case SideCode::kBuyCover: name = "BuyCover"; break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  }
+};
+
+template <> struct fmt::formatter<orderbook::data::OrderStatusCode> : formatter<std::string_view> {
+    using OrderStatusCode = orderbook::data::OrderStatusCode;
+
+    template <typename FormatContext>
+    auto format(OrderStatusCode c, FormatContext& ctx) {
+
+        std::string_view name = "Unknown";
+        switch (c) {
+         case OrderStatusCode::kUnknown: break;
+         case OrderStatusCode::kPendingNew: name = "PendingNew"; break;
+         case OrderStatusCode::kPendingModify: name = "PendingModify"; break;
+         case OrderStatusCode::kPendingCancel: name = "PendingCancel"; break;
+         case OrderStatusCode::kRejected: name = "Rejected"; break;
+         case OrderStatusCode::kNew: name = "New"; break;
+         case OrderStatusCode::kPartiallyFilled: name = "PartiallyFilled"; break;
+         case OrderStatusCode::kFilled: name = "Filled"; break;
+         case OrderStatusCode::kCancelled: name = "Cancelled"; break;
+         case OrderStatusCode::kCompleted: name = "Completed"; break;
+         case OrderStatusCode::kCancelRejected: name = "CancelRejected"; break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  }
+};
+
+template <> struct fmt::formatter<orderbook::serialize::EventTypeCode> : formatter<std::string_view> {
+    using EventTypeCode = orderbook::serialize::EventTypeCode;
+
+    template <typename FormatContext>
+    auto format(EventTypeCode c, FormatContext& ctx) {
+
+        std::string_view name = "Unknown";
+        switch (c) {
+         case EventTypeCode::Unknown: break;
+         case EventTypeCode::OrderPendingNew: name = "OrderPendingNew"; break;
+         case EventTypeCode::OrderPendingModify: name = "OrderPendingModify"; break;
+         case EventTypeCode::OrderPendingCancel: name = "OrderPendingCancel"; break;
+         case EventTypeCode::OrderRejected: name = "OrderRejected"; break;
+         case EventTypeCode::OrderNew: name = "OrderNew"; break;
+         case EventTypeCode::OrderPartiallyFilled: name = "OrderPartiallyFilled"; break;
+         case EventTypeCode::OrderFilled: name = "OrderFilled"; break;
+         case EventTypeCode::OrderCancelled: name = "OrderCancelled"; break;
+         case EventTypeCode::OrderCompleted: name = "OrderCompleted"; break;
+         case EventTypeCode::OrderCancelRejected: name = "OrderCancelRejected"; break;
+         case EventTypeCode::OrderModified: name = "OrderModified"; break;
+         case EventTypeCode::CancelOnDisconnect: name = "CancelOnDisconnect"; break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  }
+};
+
 namespace orderbook {
 
 struct MapListOrderBookTraits {

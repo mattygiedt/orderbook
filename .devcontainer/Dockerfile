@@ -1,4 +1,4 @@
-FROM gcc:11.2
+FROM gcc:12.1
 
 WORKDIR /
 
@@ -18,6 +18,15 @@ RUN echo "Installing development tools ..."; \
         libgoogle-perftools-dev \
         clang-tidy \
         clang-format;
+
+RUN echo "Installing mold linker ..."; \
+    set -ex; \
+    git clone https://github.com/rui314/mold.git; \
+    cd mold; \
+    git checkout v1.3.1; \
+    make -j4; \
+    make install; \
+    rm -rf /googletest;
 
 RUN echo "Installing google test ..."; \
     set -ex; \

@@ -292,7 +292,7 @@ class MapListContainer {
           --size_;
           ++order_count;
         } else {
-          std::next(it);
+          it = std::next(it);
         }
       }
 
