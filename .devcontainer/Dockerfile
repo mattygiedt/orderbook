@@ -26,7 +26,7 @@ RUN echo "Installing mold linker ..."; \
     git checkout v1.3.1; \
     make -j4; \
     make install; \
-    rm -rf /googletest;
+    rm -rf /mold;
 
 RUN echo "Installing google test ..."; \
     set -ex; \
