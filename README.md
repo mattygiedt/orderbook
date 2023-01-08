@@ -66,6 +66,8 @@ W.K. Selpf wrote a really cool [article](http://howtohft.wordpress.com/2011/02/1
 
 That's basically what you'll find here, written in my best attempt at modern C++20'ish concepts and syntax.
 
+For an in-depth discussion on how actual, _real_ exchanges are built, check out this [tech-talk](https://www.janestreet.com/tech-talks/building-an-exchange) from Jane Street.
+
 ### Order Book Implemetations
 There are three limit order book containers:
 
