@@ -9,6 +9,49 @@ This project is meant to be educational. It employs the tinyest of testing, whic
 
 Still, I think it's pretty cool, and would love to hear your comments and / or suggested improvements to the `IntrusivePtr` and `IntrusiveList` order book implementations!
 
+### Limit Order Book Discussion
+
+W.K. Selpf wrote a really cool [article](http://howtohft.wordpress.com/2011/02/15/how-to-build-a-fast-limit-order-book/) (2011!) on how to go about building a limit order book.
+
+>The idea is to have a binary tree of Limit objects sorted by limitPrice, each of which is itself a doubly linked list of Order objects.  Each side of the book, the buy Limits and the sell Limits, should be in separate trees so that the inside of the book corresponds to the end and beginning of the buy Limit tree and sell Limit tree, respectively.  Each order is also an entry in a map keyed off idNumber, and each Limit is also an entry in a map keyed off limitPrice.
+
+That's basically what you'll find here, written in my best attempt at modern C++20'ish concepts and syntax.
+
+For an in-depth discussion on how actual, _real_ exchanges are built, check out this [tech-talk](https://www.janestreet.com/tech-talks/building-an-exchange) from Jane Street.
+
+## The General Idea
+![Overview Image](src/overview.png)
+
+This project is being developed from the exchange's point of view. So the gateway does validation, translation from FIX <-> FlatBuffer, and then proxies requests to the orderbook via flatbuffer over zmq client socket. The client was added as a sort of test harness / afterthought when I needed to work on cancel-on-disconnect.
+
+### Running Client / Gateway / Orderbook
+
+There are three binary executables created under `/src/cpp`:
+
+* `client` -- Example application that sends FIX.4.2 messages to the order book via the `gateway`
+* `gateway` -- FIX.4.2 gateway application that proxies FIX and FlatBuffer messaging between the `client` and the `orderbook`
+* `orderbook` -- The order book application
+
+Start three separate `bash` shells, and run the client / gateway / orderbook in each:
+```
+root@:/workspaces/orderbook/build# ./src/cpp/orderbook tcp://127.0.0.1:5555
+```
+```
+root@:/workspaces/orderbook/build# ./src/cpp/gateway ../config/gateway.ini
+```
+```
+root@:/workspaces/orderbook/build# ./src/cpp/client ../config/citadel.ini
+```
+
+### Order Book Implemetations
+There are three limit order book containers:
+
+* `MapListContainer` -- reference limit order book implementation.
+* `IntrusivePtrContainer` -- read up on intrusive pointers [here](https://www.boost.org/doc/libs/1_78_0/libs/smart_ptr/doc/html/smart_ptr.html#intrusive_ptr).
+* `IntrusiveListContainer` -- read up on the intrusive list data structure [here](https://www.boost.org/doc/libs/1_78_0/doc/html/intrusive.html).
+
+Each implementation shares the same interface defined in the `ContainerConcept`.
+
 ### Building
 This project uses VSCode `.devcontainer` support -- look in the directory for a sample `Dockerfile` if you want to roll your own.
 
@@ -38,45 +81,6 @@ Test project /workspaces/orderbook/build
 
 Total Test time (real) =   4.86 sec
 ```
-
-### Running Client / Gateway / Orderbook
-
-There are three binary executables created under `/src/cpp`:
-
-* `client` -- Example application that sends FIX.4.2 messages to the order book via the `gateway`
-* `gateway` -- FIX.4.2 gateway application that proxies FIX and FlatBuffer messaging between the `client` and the `orderbook`
-* `orderbook` -- The order book application
-
-Start three separate `bash` shells, and run the client / gateway / orderbook in each:
-```
-root@:/workspaces/orderbook/build# ./src/cpp/orderbook tcp://127.0.0.1:5555
-```
-```
-root@:/workspaces/orderbook/build# ./src/cpp/gateway ../config/gateway.ini
-```
-```
-root@:/workspaces/orderbook/build# ./src/cpp/client ../config/citadel.ini
-```
-
-### Limit Order Book Discussion
-
-W.K. Selpf wrote a really cool [article](http://howtohft.wordpress.com/2011/02/15/how-to-build-a-fast-limit-order-book/) (2011!) on how to go about building a limit order book.
-
->The idea is to have a binary tree of Limit objects sorted by limitPrice, each of which is itself a doubly linked list of Order objects.  Each side of the book, the buy Limits and the sell Limits, should be in separate trees so that the inside of the book corresponds to the end and beginning of the buy Limit tree and sell Limit tree, respectively.  Each order is also an entry in a map keyed off idNumber, and each Limit is also an entry in a map keyed off limitPrice.
-
-That's basically what you'll find here, written in my best attempt at modern C++20'ish concepts and syntax.
-
-For an in-depth discussion on how actual, _real_ exchanges are built, check out this [tech-talk](https://www.janestreet.com/tech-talks/building-an-exchange) from Jane Street.
-
-### Order Book Implemetations
-There are three limit order book containers:
-
-* `MapListContainer` -- reference limit order book implementation.
-* `IntrusivePtrContainer` -- read up on intrusive pointers [here](https://www.boost.org/doc/libs/1_78_0/libs/smart_ptr/doc/html/smart_ptr.html#intrusive_ptr).
-* `IntrusiveListContainer` -- read up on the intrusive list data structure [here](https://www.boost.org/doc/libs/1_78_0/doc/html/intrusive.html).
-
-Each implementation shares the same interface defined in the `ContainerConcept`.
-
 
 ### Benchmarking
 
